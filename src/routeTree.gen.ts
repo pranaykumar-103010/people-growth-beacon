@@ -9,61 +9,153 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
+import { Route as AppNewJoinersRouteImport } from './routes/_app/new-joiners'
+import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTalentMatrixRoute = AppTalentMatrixRouteImport.update({
+  id: '/talent-matrix',
+  path: '/talent-matrix',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNewJoinersRoute = AppNewJoinersRouteImport.update({
+  id: '/new-joiners',
+  path: '/new-joiners',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAttritionRoute = AppAttritionRouteImport.update({
+  id: '/attrition',
+  path: '/attrition',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/attrition': typeof AppAttritionRoute
+  '/new-joiners': typeof AppNewJoinersRoute
+  '/talent-matrix': typeof AppTalentMatrixRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/attrition': typeof AppAttritionRoute
+  '/new-joiners': typeof AppNewJoinersRoute
+  '/talent-matrix': typeof AppTalentMatrixRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/attrition': typeof AppAttritionRoute
+  '/_app/new-joiners': typeof AppNewJoinersRoute
+  '/_app/talent-matrix': typeof AppTalentMatrixRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/login' | '/attrition' | '/new-joiners' | '/talent-matrix'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/login' | '/attrition' | '/new-joiners' | '/talent-matrix' | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/attrition'
+    | '/_app/new-joiners'
+    | '/_app/talent-matrix'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/talent-matrix': {
+      id: '/_app/talent-matrix'
+      path: '/talent-matrix'
+      fullPath: '/talent-matrix'
+      preLoaderRoute: typeof AppTalentMatrixRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/new-joiners': {
+      id: '/_app/new-joiners'
+      path: '/new-joiners'
+      fullPath: '/new-joiners'
+      preLoaderRoute: typeof AppNewJoinersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/attrition': {
+      id: '/_app/attrition'
+      path: '/attrition'
+      fullPath: '/attrition'
+      preLoaderRoute: typeof AppAttritionRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAttritionRoute: typeof AppAttritionRoute
+  AppNewJoinersRoute: typeof AppNewJoinersRoute
+  AppTalentMatrixRoute: typeof AppTalentMatrixRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAttritionRoute: AppAttritionRoute,
+  AppNewJoinersRoute: AppNewJoinersRoute,
+  AppTalentMatrixRoute: AppTalentMatrixRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
