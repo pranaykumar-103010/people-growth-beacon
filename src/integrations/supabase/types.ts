@@ -14,16 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      employees: {
+        Row: {
+          created_at: string
+          date_joined: string
+          email: string | null
+          id: string
+          induction_status: number
+          job_title: string | null
+          last_analyzed_at: string | null
+          manager_email: string
+          name: string
+          nine_box_quadrant: string
+          performance_rating: number
+          potential_rating: number
+          risk_drivers: string[]
+          risk_score: number
+          sub_department: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_joined?: string
+          email?: string | null
+          id?: string
+          induction_status?: number
+          job_title?: string | null
+          last_analyzed_at?: string | null
+          manager_email: string
+          name: string
+          nine_box_quadrant?: string
+          performance_rating?: number
+          potential_rating?: number
+          risk_drivers?: string[]
+          risk_score?: number
+          sub_department: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_joined?: string
+          email?: string | null
+          id?: string
+          induction_status?: number
+          job_title?: string | null
+          last_analyzed_at?: string | null
+          manager_email?: string
+          name?: string
+          nine_box_quadrant?: string
+          performance_rating?: number
+          potential_rating?: number
+          risk_drivers?: string[]
+          risk_score?: number
+          sub_department?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hrbp_notes: {
+        Row: {
+          ai_summary: string | null
+          author_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          note: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          author_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          note: string
+        }
+        Update: {
+          ai_summary?: string | null
+          author_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hrbp_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "hrbp_admin" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +289,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["hrbp_admin", "manager"],
+    },
   },
 } as const
