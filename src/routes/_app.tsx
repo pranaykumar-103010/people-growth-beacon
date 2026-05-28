@@ -8,19 +8,12 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { session, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
-    if (!loading && !session) navigate({ to: "/login" });
-  }, [loading, session, navigate]);
+    if (!user) navigate({ to: "/login" });
+  }, [user, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      </div>
-    );
-  }
-  if (!session) return null;
+  if (!user) return null;
   return <AppShell><Outlet /></AppShell>;
 }

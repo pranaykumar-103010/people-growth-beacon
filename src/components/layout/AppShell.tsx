@@ -1,6 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { LayoutDashboard, Grid3x3, AlertTriangle, UserPlus, LogOut, Sparkles, ShieldCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { mockStore } from "@/lib/mock-store";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { email, isAdmin } = useAuth();
   const router = useRouter();
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    router.invalidate();
+  const signOut = () => {
+    mockStore.signOut();
+    router.navigate({ to: "/login" });
   };
 
   return (

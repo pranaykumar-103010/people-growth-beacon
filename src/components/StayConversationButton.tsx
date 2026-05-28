@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { Sparkles, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { suggestStayQuestions } from "@/lib/ai.functions";
+import { suggestStayQuestionsMock } from "@/lib/mock-ai";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RagBadge } from "@/components/Rag";
 import type { Employee } from "@/lib/types";
 
 export function StayConversationButton({ employee }: { employee: Employee }) {
-  const suggest = useServerFn(suggestStayQuestions);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState<string>("");
@@ -20,8 +18,8 @@ export function StayConversationButton({ employee }: { employee: Employee }) {
     setLoading(true);
     setContent("");
     try {
-      const { content } = await suggest({ data: { employeeId: employee.id } });
-      setContent(content);
+      const res = await suggestStayQuestionsMock(employee.id);
+      setContent(res.content);
     } catch (e) {
       toast.error((e as Error).message);
       setOpen(false);
