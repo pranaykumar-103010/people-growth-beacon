@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Grid3x3, AlertTriangle, UserPlus, LogOut, Sparkles, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck } from "lucide-react";
 import { mockStore } from "@/lib/mock-store";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,6 @@ const nav = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
   { to: "/talent-matrix", label: "Talent Matrix", icon: Grid3x3 },
   { to: "/attrition", label: "Attrition Radar", icon: AlertTriangle },
-  { to: "/new-joiners", label: "New Joiners", icon: UserPlus },
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
