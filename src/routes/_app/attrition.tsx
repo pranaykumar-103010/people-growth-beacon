@@ -22,8 +22,10 @@ function NotesPanel({ employee }: { employee: Employee }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const notes = useMockStore((s) =>
-    isAdmin ? s.notes.filter((n) => n.employee_id === employee.id) : [],
+  const allNotes = useMockStore((s) => s.notes);
+  const notes = useMemo(
+    () => (isAdmin ? allNotes.filter((n) => n.employee_id === employee.id) : []),
+    [allNotes, isAdmin, employee.id],
   );
 
   const submit = async () => {

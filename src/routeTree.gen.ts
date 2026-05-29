@@ -13,7 +13,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
-import { Route as AppNewJoinersRouteImport } from './routes/_app/new-joiners'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 
 const LoginRoute = LoginRouteImport.update({
@@ -35,11 +34,6 @@ const AppTalentMatrixRoute = AppTalentMatrixRouteImport.update({
   path: '/talent-matrix',
   getParentRoute: () => AppRoute,
 } as any)
-const AppNewJoinersRoute = AppNewJoinersRouteImport.update({
-  id: '/new-joiners',
-  path: '/new-joiners',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAttritionRoute = AppAttritionRouteImport.update({
   id: '/attrition',
   path: '/attrition',
@@ -50,13 +44,11 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/attrition': typeof AppAttritionRoute
-  '/new-joiners': typeof AppNewJoinersRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/attrition': typeof AppAttritionRoute
-  '/new-joiners': typeof AppNewJoinersRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
   '/': typeof AppIndexRoute
 }
@@ -65,21 +57,19 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/attrition': typeof AppAttritionRoute
-  '/_app/new-joiners': typeof AppNewJoinersRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/attrition' | '/new-joiners' | '/talent-matrix'
+  fullPaths: '/' | '/login' | '/attrition' | '/talent-matrix'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/attrition' | '/new-joiners' | '/talent-matrix' | '/'
+  to: '/login' | '/attrition' | '/talent-matrix' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/_app/attrition'
-    | '/_app/new-joiners'
     | '/_app/talent-matrix'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -119,13 +109,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTalentMatrixRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/new-joiners': {
-      id: '/_app/new-joiners'
-      path: '/new-joiners'
-      fullPath: '/new-joiners'
-      preLoaderRoute: typeof AppNewJoinersRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/attrition': {
       id: '/_app/attrition'
       path: '/attrition'
@@ -138,14 +121,12 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAttritionRoute: typeof AppAttritionRoute
-  AppNewJoinersRoute: typeof AppNewJoinersRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAttritionRoute: AppAttritionRoute,
-  AppNewJoinersRoute: AppNewJoinersRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
   AppIndexRoute: AppIndexRoute,
 }
@@ -159,3 +140,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
