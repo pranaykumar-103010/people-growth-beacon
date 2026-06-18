@@ -14,59 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      employees: {
+      employee_directory: {
         Row: {
           created_at: string
-          date_joined: string
-          email: string | null
-          id: string
-          induction_status: number
-          job_title: string | null
-          last_analyzed_at: string | null
-          manager_email: string
-          name: string
-          nine_box_quadrant: string
-          performance_rating: number
-          potential_rating: number
-          risk_drivers: string[]
-          risk_score: number
-          sub_department: string
-          updated_at: string
+          display_name: string
+          email: string
         }
         Insert: {
           created_at?: string
-          date_joined?: string
-          email?: string | null
-          id?: string
-          induction_status?: number
-          job_title?: string | null
-          last_analyzed_at?: string | null
-          manager_email: string
-          name: string
-          nine_box_quadrant?: string
-          performance_rating?: number
-          potential_rating?: number
-          risk_drivers?: string[]
-          risk_score?: number
-          sub_department: string
-          updated_at?: string
+          display_name: string
+          email: string
         }
         Update: {
           created_at?: string
-          date_joined?: string
+          display_name?: string
+          email?: string
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          active: boolean
+          attrition_risk: number
+          created_at: string
+          department: string
+          email: string | null
+          emp_id: string
+          function_head_email: string | null
+          future_career_path: string | null
+          h2_rating: number
+          hrbp_insights: string | null
+          job_title: string | null
+          joining_date: string
+          level: string | null
+          manager_email: string
+          name: string
+          nine_box_quadrant: string
+          potential_rating: number
+          rag_status: string
+          rollup_manager_email: string | null
+          sub_vertical: string | null
+          succession_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          attrition_risk?: number
+          created_at?: string
+          department?: string
           email?: string | null
-          id?: string
-          induction_status?: number
+          emp_id: string
+          function_head_email?: string | null
+          future_career_path?: string | null
+          h2_rating?: number
+          hrbp_insights?: string | null
           job_title?: string | null
-          last_analyzed_at?: string | null
+          joining_date?: string
+          level?: string | null
+          manager_email: string
+          name: string
+          nine_box_quadrant?: string
+          potential_rating?: number
+          rag_status?: string
+          rollup_manager_email?: string | null
+          sub_vertical?: string | null
+          succession_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          attrition_risk?: number
+          created_at?: string
+          department?: string
+          email?: string | null
+          emp_id?: string
+          function_head_email?: string | null
+          future_career_path?: string | null
+          h2_rating?: number
+          hrbp_insights?: string | null
+          job_title?: string | null
+          joining_date?: string
+          level?: string | null
           manager_email?: string
           name?: string
           nine_box_quadrant?: string
-          performance_rating?: number
           potential_rating?: number
-          risk_drivers?: string[]
-          risk_score?: number
-          sub_department?: string
+          rag_status?: string
+          rollup_manager_email?: string | null
+          sub_vertical?: string | null
+          succession_notes?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -102,7 +138,7 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
-            referencedColumns: ["id"]
+            referencedColumns: ["emp_id"]
           },
         ]
       }
@@ -153,6 +189,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_emp: {
+        Args: {
+          _emp_email: string
+          _emp_fh: string
+          _emp_mgr: string
+          _emp_rollup: string
+          _viewer_email: string
+        }
+        Returns: boolean
+      }
+      compute_quadrant: {
+        Args: { _perf: number; _pot: number }
+        Returns: string
+      }
+      current_user_email: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -162,7 +213,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "hrbp_admin" | "manager"
+      app_role: "hrbp_admin" | "manager" | "function_head" | "rollup_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -290,7 +341,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["hrbp_admin", "manager"],
+      app_role: ["hrbp_admin", "manager", "function_head", "rollup_manager"],
     },
   },
 } as const

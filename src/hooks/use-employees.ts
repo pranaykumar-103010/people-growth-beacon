@@ -1,15 +1,20 @@
-// Front-end mock — reads employees from local store, scoped by manager email unless admin.
-import { useMockStore } from "@/lib/mock-store";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import type { Employee } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
 
 export function useEmployees() {
-  const user = useMockStore((s) => s.user);
-  const all = useMockStore((s) => s.employees);
-  const data: Employee[] = !user
-    ? []
-    : user.isAdmin
-      ? [...all]
-      : all.filter((e) => e.manager_email.toLowerCase() === user.email.toLowerCase());
-  data.sort((a, b) => b.risk_score - a.risk_score);
-  return { data, isLoading: false } as const;
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["employees", user?.id ?? "anon"],
+    enabled: !!user,
+    queryFn: async (): Promise<Employee[]> => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("*")
+        .order("attrition_risk", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Employee[];
+    },
+  });
 }

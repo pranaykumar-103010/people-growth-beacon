@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -45,16 +46,23 @@ const AppAttritionRoute = AppAttritionRouteImport.update({
   path: '/attrition',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
@@ -64,6 +72,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/admin': typeof AppAdminRoute
   '/_app/attrition': typeof AppAttritionRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
@@ -74,15 +83,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/admin'
     | '/attrition'
     | '/risk-methodology'
     | '/talent-matrix'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/attrition' | '/risk-methodology' | '/talent-matrix' | '/'
+  to:
+    | '/login'
+    | '/admin'
+    | '/attrition'
+    | '/risk-methodology'
+    | '/talent-matrix'
+    | '/'
   id:
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/admin'
     | '/_app/attrition'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
@@ -138,10 +155,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAttritionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
   AppAttritionRoute: typeof AppAttritionRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
@@ -149,6 +174,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
   AppAttritionRoute: AppAttritionRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,

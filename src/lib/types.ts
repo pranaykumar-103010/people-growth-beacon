@@ -1,34 +1,79 @@
 export type Employee = {
-  id: string;
+  emp_id: string;
   name: string;
   email: string | null;
-  sub_department: string;
   job_title: string | null;
-  manager_email: string;
-  date_joined: string;
-  risk_score: number;
-  performance_rating: number;
+  level: string | null;
+  department: string;
+  sub_vertical: string | null;
+  joining_date: string;
+  h2_rating: number;
   potential_rating: number;
+  manager_email: string;
+  rollup_manager_email: string | null;
+  function_head_email: string | null;
   nine_box_quadrant: string;
-  induction_status: number;
-  risk_drivers: string[];
-  last_analyzed_at: string | null;
+  attrition_risk: number;
+  rag_status: "green" | "amber" | "red";
+  succession_notes: string | null;
+  future_career_path: string | null;
+  hrbp_insights: string | null;
+  active: boolean;
   created_at: string;
   updated_at: string;
 };
 
+export type AppRole = "hrbp_admin" | "function_head" | "rollup_manager" | "manager";
+
 export const QUADRANTS = [
-  "Star", "High Performer", "Core Player",
-  "Question Mark", "Key Player", "Solid Performer",
-  "Risk", "Inconsistent", "Iceberg",
+  "Star", "Key Player", "Question Mark",
+  "High Performer", "Core Player", "Inconsistent",
+  "Risk", "Solid Performer", "Iceberg",
 ] as const;
 
+export type Quadrant = typeof QUADRANTS[number];
+
+export const QUADRANT_DESC: Record<Quadrant, string> = {
+  Star: "Future leader · perf 4-5 / pot 4-5",
+  "Key Player": "Strong potential · perf 3 / pot 4-5",
+  "Question Mark": "High capability, underperforming · perf 1-2 / pot 4-5",
+  "High Performer": "Top contributor · perf 4-5 / pot 3",
+  "Core Player": "Reliable & stable · perf 3 / pot 3",
+  Inconsistent: "Performance gaps · perf 1-2 / pot 3",
+  Risk: "Expert contributor · perf 4-5 / pot 1-2",
+  "Solid Performer": "Dependable · perf 3 / pot 1-2",
+  Iceberg: "Low perf, low potential · perf 1-2 / pot 1-2",
+};
+
+export function computeQuadrant(perf: number, pot: number): Quadrant {
+  const pb = perf >= 3.5 ? "H" : perf >= 2.5 ? "M" : "L";
+  const ob = pot >= 3.5 ? "H" : pot >= 2.5 ? "M" : "L";
+  const map: Record<string, Quadrant> = {
+    HH: "Star", MH: "Key Player", LH: "Question Mark",
+    HM: "High Performer", MM: "Core Player", LM: "Inconsistent",
+    HL: "Risk", ML: "Solid Performer", LL: "Iceberg",
+  };
+  return map[pb + ob];
+}
+
 export function rag(score: number): "green" | "amber" | "red" {
-  if (score >= 70) return "red";
+  if (score >= 65) return "red";
   if (score >= 40) return "amber";
   return "green";
 }
 
 export function tenureDays(dateJoined: string): number {
   return Math.floor((Date.now() - new Date(dateJoined).getTime()) / 86400000);
+}
+
+export function slugifyEmail(name: string, domain = "flick2know.com"): string {
+  const s = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "");
+  return `${s}@${domain}`;
+}
+
+export const ALLOWED_DOMAINS = ["flick2know.com", "fieldassist.in"] as const;
+export function isAllowedEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const d = email.toLowerCase().split("@")[1];
+  return ALLOWED_DOMAINS.includes(d as (typeof ALLOWED_DOMAINS)[number]);
 }
