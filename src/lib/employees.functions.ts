@@ -50,7 +50,7 @@ export const upsertEmployees = createServerFn({ method: "POST" })
   .middleware(mw)
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as { supabase: any; userId: string };
+    const { supabase, userId } = context as unknown as { supabase: any; userId: string };
     await ensureAdmin(supabase, userId);
 
     // Pull existing rows to merge
@@ -95,7 +95,7 @@ export const updateEmployeeField = createServerFn({ method: "POST" })
     patch: z.record(z.string(), z.any()),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context as { supabase: any; userId: string };
+    const { supabase, userId } = context as unknown as { supabase: any; userId: string };
     await ensureAdmin(supabase, userId);
     const patch = { ...data.patch };
     delete patch.emp_id; delete patch.created_at; delete patch.updated_at;
