@@ -37,8 +37,9 @@ function quadrant(perf: number, pot: number): string {
   return m[pb + ob];
 }
 
-async function ensureAdmin(supabase: ReturnType<typeof requireSupabaseAuth> extends unknown ? any : never, userId: string) {
-  const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "hrbp_admin" as never });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureAdmin(supabase: any, userId: string) {
+  const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "hrbp_admin" });
   if (!data) throw new Error("Forbidden — admin only");
 }
 
