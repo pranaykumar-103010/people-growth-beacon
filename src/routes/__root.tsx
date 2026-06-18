@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isAllowedEmail } from "@/lib/types";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -52,9 +53,16 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      // Domain wall: enforce on every sign-in
+      if (session?.user && !isAllowedEmail(session.user.email)) {
+        await supabase.auth.signOut();
+        router.navigate({ to: "/login", search: { restricted: "1" } as never });
+        return;
+      }
       router.invalidate();
-      queryClient.invalidateQueries();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
