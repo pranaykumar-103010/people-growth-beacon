@@ -1,120 +1,65 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { Loader2, Sparkles, Lock } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo } from "react";
+import { Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { useEmployees } from "@/hooks/use-employees";
-import { analyzeOneOnOneNoteMock } from "@/lib/mock-ai";
-import { useMockStore } from "@/lib/mock-store";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { RagBadge } from "@/components/Rag";
-import { useAuth } from "@/hooks/use-auth";
-import type { Employee } from "@/lib/types";
+import { exportEmployeesXlsx } from "@/lib/export";
 
 export const Route = createFileRoute("/_app/attrition")({
   component: AttritionRadar,
 });
 
-function NotesPanel({ employee }: { employee: Employee }) {
-  const { isAdmin, user } = useAuth();
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const allNotes = useMockStore((s) => s.notes);
-  const notes = useMemo(
-    () => (isAdmin ? allNotes.filter((n) => n.employee_id === employee.id) : []),
-    [allNotes, isAdmin, employee.id],
-  );
-
-  const submit = async () => {
-    if (note.trim().length < 10) { toast.error("Note too short"); return; }
-    setBusy(true);
-    try {
-      const res = await analyzeOneOnOneNoteMock(employee.id, note, user?.id ?? "mock");
-      toast.success(`Risk now ${res.risk_score} · ${res.nine_box_quadrant}`);
-      setNote("");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setBusy(false); }
-  };
-
-  if (!isAdmin) {
-    return (
-      <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground flex items-center gap-2">
-        <Lock className="size-3.5" /> HRBP Insight notes are visible to HRBP Admins only.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <Sparkles className="size-3.5 text-accent" /> HRBP Insight · 1-on-1 note
-        </div>
-        <Textarea
-          value={note} onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. Karan mentioned he's been feeling burned out by sprint deadlines and is exploring external roles for more growth…"
-          className="min-h-24"
-        />
-        <Button onClick={submit} disabled={busy} size="sm" className="gap-1.5">
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-          Analyze & update risk
-        </Button>
-      </div>
-      {notes.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">Past notes</div>
-          {notes.map((n) => (
-            <div key={n.id} className="text-xs border rounded p-2.5 bg-secondary/40">
-              <div className="text-muted-foreground mb-1">{new Date(n.created_at).toLocaleDateString()}</div>
-              <div className="whitespace-pre-wrap">{n.note}</div>
-              {n.ai_summary && <div className="mt-1.5 pt-1.5 border-t text-accent italic">{n.ai_summary}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AttritionRadar() {
-  const { data: employees } = useEmployees();
+  const { role } = useAuth();
+  const { data: employees = [] } = useEmployees();
 
-  const driverData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const e of employees) for (const d of e.risk_drivers) counts[d] = (counts[d] ?? 0) + 1;
-    return Object.entries(counts)
-      .map(([driver, count]) => ({ driver, count }))
-      .sort((a, b) => b.count - a.count);
+  // Risk distribution by sub-vertical
+  const subVertData = useMemo(() => {
+    const m: Record<string, { count: number; sumRisk: number }> = {};
+    for (const e of employees) {
+      const k = e.sub_vertical || "Other";
+      if (!m[k]) m[k] = { count: 0, sumRisk: 0 };
+      m[k].count += 1; m[k].sumRisk += e.attrition_risk;
+    }
+    return Object.entries(m)
+      .map(([sub_vertical, v]) => ({ sub_vertical, avgRisk: Math.round(v.sumRisk / v.count), count: v.count }))
+      .sort((a, b) => b.avgRisk - a.avgRisk);
   }, [employees]);
 
-  const sorted = [...employees].sort((a, b) => b.risk_score - a.risk_score);
+  const sorted = [...employees].sort((a, b) => b.attrition_risk - a.attrition_risk);
 
   return (
     <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
-      <header>
-        <div className="text-xs uppercase tracking-widest text-accent font-medium">Attrition Radar</div>
-        <h1 className="font-display text-3xl md:text-4xl">Risk trends & key drivers</h1>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-accent font-medium">Attrition Radar</div>
+          <h1 className="font-display text-3xl md:text-4xl">Risk trends across sub-verticals</h1>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportEmployeesXlsx(employees, `attrition-${role ?? "team"}`)}>
+          <Download className="size-4" /> Export Team Data
+        </Button>
       </header>
 
       <Card>
         <CardContent className="p-5">
-          <div className="text-sm font-medium mb-3">Top risk drivers across team</div>
-          {driverData.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-8 text-center">No risk drivers tagged yet.</div>
+          <div className="text-sm font-medium mb-3">Average attrition risk by sub-vertical</div>
+          {subVertData.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">No employees in view yet.</div>
           ) : (
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={driverData} layout="vertical" margin={{ left: 20 }}>
-                  <XAxis type="number" stroke="oklch(0.48 0.04 255)" fontSize={12} />
-                  <YAxis dataKey="driver" type="category" stroke="oklch(0.48 0.04 255)" fontSize={12} width={140} />
+                <BarChart data={subVertData} layout="vertical" margin={{ left: 20 }}>
+                  <XAxis type="number" domain={[0, 100]} stroke="oklch(0.48 0.04 255)" fontSize={12} />
+                  <YAxis dataKey="sub_vertical" type="category" stroke="oklch(0.48 0.04 255)" fontSize={12} width={150} />
                   <Tooltip cursor={{ fill: "oklch(0.95 0.015 250)" }}
                     contentStyle={{ background: "white", border: "1px solid oklch(0.91 0.013 250)", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                    {driverData.map((_, i) => (
-                      <Cell key={i} fill="oklch(0.48 0.09 255)" />
+                  <Bar dataKey="avgRisk" radius={[0, 6, 6, 0]}>
+                    {subVertData.map((d, i) => (
+                      <Cell key={i} fill={d.avgRisk >= 65 ? "oklch(0.55 0.21 25)" : d.avgRisk >= 40 ? "oklch(0.72 0.17 70)" : "oklch(0.62 0.16 150)"} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -127,30 +72,27 @@ function AttritionRadar() {
       <section className="space-y-3">
         <h2 className="font-display text-xl">Profiles · sorted by risk</h2>
         {sorted.map((e) => (
-          <Card key={e.id} id={e.id}>
-            <CardContent className="p-5 grid md:grid-cols-[1fr_320px] gap-5">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-display text-lg">{e.name}</div>
-                    <div className="text-xs text-muted-foreground">{e.job_title} · {e.sub_department}</div>
-                  </div>
-                  <RagBadge score={e.risk_score} />
+          <Card key={e.emp_id} id={e.emp_id}>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-display text-lg">{e.name}</div>
+                  <div className="text-xs text-muted-foreground">{e.job_title} · {e.sub_vertical} · Manager: {e.manager_email}</div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  <div><div className="text-muted-foreground">Performance</div><div className="font-medium text-sm">{e.performance_rating}/5</div></div>
-                  <div><div className="text-muted-foreground">Potential</div><div className="font-medium text-sm">{e.potential_rating}/5</div></div>
-                  <div><div className="text-muted-foreground">9-Box</div><div className="font-medium text-sm">{e.nine_box_quadrant}</div></div>
-                </div>
-                {e.risk_drivers.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {e.risk_drivers.map((d) => (
-                      <span key={d} className="text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-rag-red/10 text-rag-red border border-rag-red/20">{d}</span>
-                    ))}
-                  </div>
-                )}
+                <RagBadge score={e.attrition_risk} />
               </div>
-              <NotesPanel employee={e} />
+              <div className="grid grid-cols-4 gap-3 text-xs">
+                <div><div className="text-muted-foreground">H2 Rating</div><div className="font-medium text-sm">{e.h2_rating}/5</div></div>
+                <div><div className="text-muted-foreground">Potential</div><div className="font-medium text-sm">{e.potential_rating}/5</div></div>
+                <div><div className="text-muted-foreground">9-Box</div><div className="font-medium text-sm">{e.nine_box_quadrant}</div></div>
+                <div><div className="text-muted-foreground">RAG</div><div className="font-medium text-sm capitalize">{e.rag_status}</div></div>
+              </div>
+              {e.hrbp_insights && (
+                <div className="text-sm border-t pt-3">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">HRBP Insights</div>
+                  <p className="whitespace-pre-wrap">{e.hrbp_insights}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
