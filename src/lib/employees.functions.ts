@@ -42,8 +42,11 @@ async function ensureAdmin(supabase: ReturnType<typeof requireSupabaseAuth> exte
   if (!data) throw new Error("Forbidden — admin only");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mw = [requireSupabaseAuth as any] as any;
+
 export const upsertEmployees = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware(mw)
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as { supabase: any; userId: string };
