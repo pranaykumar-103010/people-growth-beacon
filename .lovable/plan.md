@@ -1,99 +1,111 @@
-# Talent IQ — v2 Rebuild Plan
+# Talent IQ v2.1 — Hardening Plan
 
-Rebuilds the pilot on top of Lovable Cloud (Supabase): real auth, real DB, RLS, and the 32-row Excel dataset as the live seed. Keeps the existing visual design, routes, and 9-Box / Attrition / Risk Methodology pages intact.
-
----
-
-## 1. Auth (Google-only + domain wall)
-
-- Enable Google OAuth via Lovable managed broker; disable email/password.
-- After sign-in, a client gate checks the email domain. If not `@flick2know.com` or `@fieldassist.in` → `supabase.auth.signOut()` + show **"Access Restricted. Please log in using your official FieldAssist or Flick2Know email address."** on `/login`.
-- `pranay.kumar@flick2know.com` seeded as `hrbp_admin` via a migration trigger that auto-grants this email on first sign-in.
-
-## 2. Schema (migration)
-
-```text
-employees           — emp_id (PK text, e.g. F2K0060), name, job_title, level,
-                      department, sub_vertical, joining_date,
-                      manager_email, rollup_manager_email, function_head_email,
-                      active (bool), attrition_risk (int 0-100), rag_status,
-                      h2_rating numeric(2,1), potential_rating numeric(2,1),
-                      nine_box_quadrant (generated), succession_notes,
-                      future_career_path, hrbp_insights
-employee_directory  — email (PK), display_name  (name→email mapping)
-user_roles          — (user_id, role)  roles: hrbp_admin | function_head |
-                      rollup_manager | manager
-hrbp_notes          — keep existing
-```
-
-- Auto-generated emails: `slug(name) + '@flick2know.com'` (e.g. Anuj Gupta → `anuj.gupta@flick2know.com`). Stored in `employee_directory` and used in all three manager columns of `employees`.
-
-## 3. RLS — 4-tier visibility
-
-Security-definer function `can_view_employee(viewer_email, emp_row)` returns true if any of:
-
-- viewer is `hrbp_admin`
-- `emp.manager_email = viewer_email`
-- `emp.rollup_manager_email = viewer_email`
-- `emp.function_head_email = viewer_email`
-- `emp.email = viewer_email` (self)
-
-Single SELECT policy on `employees` calls it. Same gate reused for `hrbp_notes` via employee FK.
-
-A user's role is derived on first login from where their email appears in the directory (function head > rollup > manager > self) and stored in `user_roles`. HRBP role is manual.
-
-## 4. Data ingest — real Excel now
-
-Migration seeds all 32 employees from `Talent_IQ_Data_Lovable.xlsx`:
-
-- Build manager email map from the 3 manager-name columns + employee names.
-- Insert directory rows, then employees with H2/Potential ratings from the sheet.
-- **Hybrid fill** for missing fields: deterministic `attrition_risk` (0–100) and `rag_status` computed from `(5 - h2_rating)` weighted with tenure; `succession_notes`, `future_career_path`, `hrbp_insights` left blank for HRBPs.
-- `nine_box_quadrant` computed by a Postgres function using the exact rubric you specified (Star / Key Player / Question Mark / High Performer / Core Player / Inconsistent / Solid Performer / Risk / Iceberg).
-
-## 5. Admin page (`/admin`, HRBP-only)
-
-Three tabs, each with a drag-drop `.xlsx`/`.csv` uploader (parsed client-side with SheetJS, upserted by `emp_id` via server functions):
-
-1. **Core Master** — IDs, names, department, sub-vertical, manager emails, active, attrition risk.
-2. **Performance & Potential** — H2 + potential ratings, succession notes, future career path.
-3. **HRBP Insights** — qualitative narrative, RAG.
-
-Plus an **inline-edit datagrid** below the tabs: search, click-to-edit any field, save updates the row server-side (RLS bypass via admin server fn that re-checks role).
-
-Upserts merge by `emp_id` — unrelated columns are preserved.
-
-## 6. 9-Box refinements
-
-- Grid sized to viewport (`h-[calc(100vh-220px)]`, `overflow:hidden` on the page, `overflow-y:auto` inside each cell) — no page scroll.
-- Each cell shows up to N employee chips with **Name · Sub-Vertical · Manager** and a "+X more" affordance.
-- Click a cell → side sheet listing everyone in that quadrant.
-- Click a chip → employee detail modal: H2, Potential, computed quadrant, Succession Next Steps, Future Career Path, HRBP Insights, attrition risk.
-- Quadrant mapping uses the exact rubric from your brief.
-
-## 7. Exports
-
-`Export Team Data` button on Dashboard + Attrition Radar for every non-admin role (Manager / Rollup / Function Head). Uses `xlsx` to generate a `.xlsx` with the rows already filtered by RLS (we just select all visible employees and write the file in-browser). Columns: Name, Sub-Vertical, Manager, H2, Potential, 9-Box, Attrition Risk, RAG, HRBP Insights.
-
-## 8. Mock cleanup
-
-Delete `src/lib/mock-store.ts`, `src/lib/mock-ai.ts`, mock branches in `use-auth`, `use-employees`, `StayConversationButton`. Restore real Supabase reads via TanStack Query + `createServerFn` (auth-protected). Risk Methodology page stays as-is (pure UI).
+Builds on top of the existing v2 (Supabase + Google OAuth + 9-Box + Admin) without altering routes, layout, design tokens, or working features. Every risky swap is feature-flagged so dummy data never disappears unless real data is verified rendered.
 
 ---
 
-## Technical notes
+## Step 0 — Excel inspection (already done)
 
-- Server fns live in `src/lib/*.functions.ts`; admin upserts use `requireSupabaseAuth` + role check (no service-role exposure).
-- `_authenticated/route.tsx` (integration-managed) guards `/`, `/attrition`, `/talent-matrix`, `/risk-methodology`, `/admin`. `/login` stays public.
-- Domain gate runs in `__root.tsx` `onAuthStateChange` so the sign-out fires even if Google issues a session for a non-corporate email.
-- `xlsx` (SheetJS) added as a dep for both ingest (admin uploads) and exports.
-- Migration includes `GRANT` on every new public table, plus an `INSERT` block for the 32 seed rows + directory.
-- Hierarchy email mapping is generated once at migration time; HRBPs can correct any wrong auto-email through the inline grid.
+Parsed `Talent_IQ_Data_Lovable.xlsx`: **32 rows, 12 columns**.
+
+**Headers (verbatim) → app field mapping:**
+
+| Excel header | Type | App field (`employees`) |
+|---|---|---|
+| `Employee Number` | string | `emp_id` (PK / upsert key) |
+| `Employee Name` | string | `name` |
+| `Reporting Manager` | string (name) | resolved → `manager_email` |
+| `Roll-up Manager` | string (name) | resolved → `rollup_manager_email` |
+| `Function Head` | string (name) | resolved → `function_head_email` |
+| `Job Title` | string | `job_title` |
+| `Level` | string | `level` |
+| `Department` | string | `department` |
+| `Sub -Vertical` *(note space)* | string | `sub_vertical` |
+| `Joining Date` | date | `joining_date` |
+| `H2 Rating` | number 0–5 | `h2_rating` (coerced to 1 decimal, clamped 1–5) |
+| `Potential Rating` | number 0–5 | `potential_rating` (same) |
+
+**Not present in the file** (will be derived or left null): `email`, `attrition_risk`, `rag_status`, `succession_notes`, `future_career_path`, `hrbp_insights`, `active`. Per prior approval: hybrid fill — risk/RAG computed from H2 + tenure; qualitative fields blank for HRBPs to fill.
+
+**Email derivation rule** (auto-generate `@flick2know.com`):  
+`slugify(name).replace(/\s+/g,'.') + '@flick2know.com'` — applied identically to employee + 3 manager-name columns so RLS joins line up.
+
+---
+
+## Step 1 — Schema delta migration
+
+Existing tables (`employees`, `user_roles`, `profiles`, `hrbp_notes`, `employee_directory`) stay. Add:
+
+1. `org_hierarchy` (materialized view of `employees` with `manager_email`, `rollup_manager_email`, `function_head_email`) — used by the recursive roll-up policy.
+2. `audit_log` — `id, actor_email, emp_id, field, old_value, new_value, occurred_at`. RLS: insert by `authenticated`, select by `hrbp_admin` only.
+3. Recursive SQL function `is_in_rollup_chain(viewer_email, emp_id)` for the Roll-up tier (walks `manager_email → manager's manager…`).
+4. Extend `can_view_emp` to use the recursive function (Manager / Roll-up / Function Head / Self / Admin tiers).
+5. Backfill `employees.email` column if missing (`ALTER TABLE … ADD COLUMN IF NOT EXISTS email text`).
+
+All new tables get `GRANT` + `ENABLE RLS` + policies in the same migration.
+
+## Step 2 — Real-data seed (idempotent, non-destructive)
+
+A single migration `INSERT … ON CONFLICT (emp_id) DO UPDATE` for all 32 rows + `employee_directory` rows for every distinct name. No `DELETE` — existing rows are preserved.
+
+Verification query bundled in the migration description: `SELECT count(*) FROM employees;` must return ≥ 32 before Step 4 swaps the UI.
+
+## Step 3 — Dashboard reads from Supabase, dummy stays as fallback
+
+- `useEmployees()` returns `{ data, source: 'live' | 'fallback' | 'error' }`.
+- If Supabase query succeeds **and** `rowCount > 0` → `live`, dummy unused.
+- If query errors or returns 0 rows → keep dummy array (kept in `src/lib/sample-employees.ts`, not deleted), `source = 'fallback'`, toast + banner shown.
+- Re-fetch on `onAuthStateChange` and after any admin upload (TanStack Query invalidate).
+
+## Step 4 — Admin page upgrades
+
+Existing `/admin` page stays. Additions:
+
+- **Three tabs** already exist; harden upserts to merge-only per Section 3d (never null out untouched fields — already implemented in `upsertEmployees`, verify and extend to Performance and HRBP tabs).
+- **Confirmation modal** after every upload: `X inserted, Y updated, Z skipped` with downloadable error CSV for skipped rows.
+- **Per-row validation** before insert: emp_id non-null & unique within batch; ratings integer-coerced & clamped 1–5; emails lowercased + domain-validated; invalid rows skipped + logged, not aborting batch.
+- **Inline datagrid** already exists; add audit-log write on every `updateEmployeeField` call.
+
+## Step 5 — 9-Box polish
+
+Current `talent-matrix.tsx` already implements viewport-fit grid + chips + side sheet. Verify and tighten:
+
+- `min-h-0` on grid children to enforce no outer scroll on small viewports.
+- Each chip shows Name · Sub-Vertical · Manager (already present — confirm).
+- Click chip → modal with H2, Potential, Succession Next Steps, Future Career Path, Attrition Risk (already wired — confirm fields populate from new columns).
+- Quadrant mapping uses existing `compute_quadrant` SQL function which already matches the brief's rubric exactly.
+
+## Step 6 — Export buttons
+
+Existing `exportEmployeesXlsx` is reused. Add the **"Export Team Data"** button to Dashboard + Attrition Radar for any non-admin role (already partially present — verify visibility logic and that the export pulls from the RLS-filtered query, not a global list).
+
+## Step 7 — Data-health guardrails
+
+- `<DataHealthBadge />` in `AppShell` top nav: green "Live", amber "Fallback", red "Error" — driven by `useEmployees().source`.
+- React error boundary around each route's main panel (`src/components/ErrorBoundary.tsx`) — never blank screen.
+- `console.log` parsed Excel summary on admin upload (row count, headers, skipped rows with reasons).
+- Smoke-test checklist run after each step and reported back.
+
+---
+
+## Execution order & pause points
+
+I will pause for your **"continue"** between each step:
+
+1. Schema delta migration (Step 1) — you approve the migration SQL.
+2. Real-data seed migration (Step 2) — you approve the INSERT migration.
+3. `useEmployees` fallback shape + `<DataHealthBadge />` (Steps 3 + 7a) — verify dashboard still shows data (live now; dummy if RLS hides).
+4. Admin hardening: validation, confirmation modal, audit log (Step 4).
+5. 9-Box + Export verification (Steps 5–6).
+6. Error boundaries + final smoke test (Step 7b).
+
+---
 
 ## Out of scope (call out)
 
-- No email verification flow (Google handles it).
-- No audit log of HRBP edits in v2 — can be added later.
-- "Active Status" defaults to `true` for all 32 rows; togglable in the admin grid.
+- No deletion of `sample-employees.ts` fallback in this pass.
+- No rewrite of the existing `__root.tsx` domain wall or `_authenticated` gate — both already work.
+- No changes to design tokens, navigation, or route paths.
+- Audit log is HRBP-readable only; no UI surfacing in this pass.
 
-Approve and I'll execute as a single sequence: migration → mock teardown → server fns + admin page → 9-Box rework → exports.
+Approve and I'll execute Step 1.
