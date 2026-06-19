@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          actor_email: string
+          emp_id: string
+          field: string
+          id: string
+          new_value: string | null
+          occurred_at: string
+          old_value: string | null
+        }
+        Insert: {
+          actor_email: string
+          emp_id: string
+          field: string
+          id?: string
+          new_value?: string | null
+          occurred_at?: string
+          old_value?: string | null
+        }
+        Update: {
+          actor_email?: string
+          emp_id?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          occurred_at?: string
+          old_value?: string | null
+        }
+        Relationships: []
+      }
       employee_directory: {
         Row: {
           created_at: string
@@ -199,6 +229,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_view_emp_v2: {
+        Args: {
+          _emp_email: string
+          _emp_fh: string
+          _emp_id: string
+          _emp_mgr: string
+          _emp_rollup: string
+          _viewer_email: string
+        }
+        Returns: boolean
+      }
       compute_quadrant: {
         Args: { _perf: number; _pot: number }
         Returns: string
@@ -209,6 +250,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_in_rollup_chain: {
+        Args: { _emp_id: string; _viewer_email: string }
         Returns: boolean
       }
     }
