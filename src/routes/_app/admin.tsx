@@ -118,10 +118,36 @@ function mapRow(tab: TabKey, raw: Record<string, unknown>): Record<string, unkno
   };
 }
 
+type Issue = { row: number; emp_id: string; problems: string[] };
+
+function validateRow(tab: TabKey, r: Record<string, unknown>, idx: number): Issue | null {
+  const problems: string[] = [];
+  const emp_id = String(r.emp_id ?? "").trim();
+  if (!emp_id) problems.push("missing Employee ID");
+  const checkEmail = (k: string) => {
+    const v = r[k];
+    if (v != null && v !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v))) problems.push(`invalid ${k}`);
+  };
+  if (tab === "core") {
+    ["email", "manager_email", "rollup_manager_email", "function_head_email"].forEach(checkEmail);
+  }
+  if (tab === "ratings") {
+    for (const k of ["h2_rating", "potential_rating"]) {
+      const v = r[k];
+      if (v != null && (Number.isNaN(Number(v)) || Number(v) < 1 || Number(v) > 5)) problems.push(`${k} must be 1–5`);
+    }
+  }
+  if (tab === "insights" && r.rag_status != null && !["green", "amber", "red"].includes(String(r.rag_status))) {
+    problems.push("rag_status must be green/amber/red");
+  }
+  return problems.length ? { row: idx + 2, emp_id, problems } : null;
+}
+
 function UploadTab({ tab }: { tab: TabKey }) {
   const cfg = TAB_CONFIG[tab];
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<{ rows: Record<string, unknown>[]; issues: Issue[]; fileName: string } | null>(null);
   const upsert = useServerFn(upsertEmployees);
   const qc = useQueryClient();
 
@@ -129,18 +155,36 @@ function UploadTab({ tab }: { tab: TabKey }) {
     setBusy(true);
     try {
       const raw = await rowsFromSheet(file);
-      const mapped = raw.map((r) => mapRow(tab, r)).filter((r) => r.emp_id);
-      if (!mapped.length) { toast.error("No rows with Employee ID found."); return; }
-      // Clean undefineds so the upsert merges rather than nulls them
-      const rows = mapped.map((r) => Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined))) as never;
-      const res = await upsert({ data: { rows } });
-      toast.success(`Upserted ${res.count} employees.`);
-      qc.invalidateQueries({ queryKey: ["employees"] });
+      const mapped = raw.map((r) => mapRow(tab, r));
+      const issues: Issue[] = [];
+      mapped.forEach((r, i) => { const issue = validateRow(tab, r, i); if (issue) issues.push(issue); });
+      const valid = mapped
+        .map((r, i) => ({ r, i }))
+        .filter(({ i }) => !issues.find((x) => x.row === i + 2 && x.problems.includes("missing Employee ID")))
+        .map(({ r }) => Object.fromEntries(Object.entries(r).filter(([, v]) => v !== undefined)));
+      if (!valid.length) { toast.error("No rows with Employee ID found."); return; }
+      setPreview({ rows: valid, issues, fileName: file.name });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const confirm = async () => {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      const res = await upsert({ data: { rows: preview.rows as never } });
+      console.log("[admin/upload]", preview.fileName, res);
+      toast.success(`Upserted ${res.count} (new: ${res.inserted}, updated: ${res.updated})`);
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      setPreview(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -176,6 +220,42 @@ function UploadTab({ tab }: { tab: TabKey }) {
             ))}
           </div>
         </div>
+
+        <AlertDialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm upload · {preview?.fileName}</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium text-foreground">{preview?.rows.length ?? 0}</span> valid rows will be merged into{" "}
+                    <span className="font-medium text-foreground">employees</span> by <span className="font-mono">emp_id</span>.
+                  </div>
+                  {preview && preview.issues.length > 0 && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-1.5 text-amber-600 font-medium mb-1">
+                        <AlertTriangle className="size-4" /> {preview.issues.length} row(s) with issues
+                      </div>
+                      <ul className="text-xs text-muted-foreground max-h-40 overflow-y-auto space-y-0.5">
+                        {preview.issues.slice(0, 25).map((i, k) => (
+                          <li key={k}>Row {i.row} ({i.emp_id || "—"}): {i.problems.join(", ")}</li>
+                        ))}
+                        {preview.issues.length > 25 && <li>…and {preview.issues.length - 25} more</li>}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirm} disabled={busy}>
+                {busy ? <Loader2 className="size-4 animate-spin mr-1.5" /> : null}
+                Confirm upload
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
