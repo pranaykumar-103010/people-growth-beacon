@@ -3,6 +3,7 @@ import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { DataHealthBadge } from "@/components/DataHealthBadge";
 
 const BASE_NAV = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
@@ -56,6 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
         <div className="mt-auto pt-4 border-t border-sidebar-border">
+          <div className="px-3 pb-2"><DataHealthBadge /></div>
           <div className="px-3 py-2 text-xs text-sidebar-foreground/60 flex items-center gap-1.5">
             {isAdmin ? <ShieldCheck className="size-3.5" /> : null}
             {role ? ROLE_LABEL[role] ?? role : "—"}
