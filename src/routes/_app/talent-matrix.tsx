@@ -53,8 +53,10 @@ function TalentMatrix() {
       </header>
 
       <div className="flex gap-2 flex-1 min-h-0">
-        <div className="hidden md:flex flex-col justify-between py-2 -ml-1">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground rotate-180" style={{ writingMode: "vertical-rl" }}>← Higher Potential</div>
+        <div className="hidden md:flex flex-col items-center justify-between py-2">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+            Potential →
+          </span>
         </div>
         <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-2 min-h-0">
           {LABELS.flat().map((label) => {
@@ -66,21 +68,24 @@ function TalentMatrix() {
                   onClick={() => setActiveQuad(label)}
                   className="flex items-center justify-between px-2.5 py-1.5 border-b border-current/20 hover:bg-black/5 transition flex-shrink-0"
                 >
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-80 leading-tight">{label}</div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wider opacity-80 leading-tight truncate">{label}</div>
                     <div className="text-[10px] opacity-60 leading-tight">{list.length} {list.length === 1 ? "person" : "people"}</div>
                   </div>
-                  <span className="text-[10px] underline opacity-70">View all →</span>
+                  <span className="text-[10px] underline opacity-70 ml-2 flex-shrink-0">View all →</span>
                 </button>
                 <div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1">
                   {list.map((e) => (
                     <button
                       key={e.emp_id}
                       onClick={() => setPicked(e)}
-                      className="w-full text-left px-2 py-1 rounded bg-white/60 hover:bg-white border border-black/5 transition text-[11px] leading-tight"
+                      title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}`}
+                      className="w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight"
                     >
                       <div className="font-medium text-foreground truncate">{e.name}</div>
-                      <div className="text-muted-foreground truncate">{e.sub_vertical} · {e.manager_email.split("@")[0]}</div>
+                      <div className="text-muted-foreground truncate">
+                        {(e.sub_vertical ?? "—")} · {e.manager_email.split("@")[0]}
+                      </div>
                     </button>
                   ))}
                   {list.length === 0 && (
@@ -92,7 +97,11 @@ function TalentMatrix() {
           })}
         </div>
       </div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-center mt-2 flex-shrink-0">Higher Performance →</div>
+      <div className="flex items-center justify-between mt-2 flex-shrink-0 md:pl-6">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Low</span>
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance →</span>
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">High</span>
+      </div>
 
       {/* Quadrant list */}
       <Sheet open={!!activeQuad} onOpenChange={(o) => !o && setActiveQuad(null)}>
