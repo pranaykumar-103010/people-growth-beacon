@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Search, Loader2, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { Upload, Search, Loader2, FileSpreadsheet, ShieldCheck, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableHead, TableHeader, TableRow, TableBody, TableCell } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { upsertEmployees, updateEmployeeField } from "@/lib/employees.functions";
 import { slugifyEmail } from "@/lib/types";
 import type { Employee } from "@/lib/types";
