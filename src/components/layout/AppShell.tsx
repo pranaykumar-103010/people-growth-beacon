@@ -3,6 +3,7 @@ import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { DataHealthBadge } from "@/components/DataHealthBadge";
 
 const BASE_NAV = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
