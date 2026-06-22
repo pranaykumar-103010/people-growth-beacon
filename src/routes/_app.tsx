@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppShell } from "@/components/layout/AppShell";
 import { isAllowedEmail } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -22,5 +23,5 @@ function AppLayout() {
   }, [user, email, loading, navigate]);
 
   if (loading || !user) return null;
-  return <AppShell><Outlet /></AppShell>;
+  return <AppShell><ErrorBoundary label="app-route"><Outlet /></ErrorBoundary></AppShell>;
 }
