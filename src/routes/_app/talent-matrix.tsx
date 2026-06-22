@@ -35,6 +35,7 @@ const COLOR: Record<Quadrant, string> = {
 
 function TalentMatrix() {
   const { data: employees = [] } = useEmployees();
+  const { role } = useAuth();
   const [activeQuad, setActiveQuad] = useState<Quadrant | null>(null);
   const [picked, setPicked] = useState<Employee | null>(null);
 
@@ -50,10 +51,15 @@ function TalentMatrix() {
 
   return (
     <div className="px-5 md:px-8 pt-5 md:pt-6 pb-2 max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-screen flex flex-col overflow-hidden">
-      <header className="mb-4 flex-shrink-0">
-        <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
-        <h1 className="font-display text-2xl md:text-3xl">9-Box · Performance × Potential</h1>
-        <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile.</p>
+      <header className="mb-4 flex-shrink-0 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
+          <h1 className="font-display text-2xl md:text-3xl">9-Box · Performance × Potential</h1>
+          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile.</p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5" disabled={employees.length === 0} onClick={() => exportEmployeesXlsx(employees, `talent-matrix-${role ?? "team"}`)}>
+          <Download className="size-3.5" /> Export Team
+        </Button>
       </header>
 
       <div className="flex gap-2 flex-1 min-h-0">
