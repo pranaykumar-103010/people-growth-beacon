@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useEmployees } from "@/hooks/use-employees";
+import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { RagBadge } from "@/components/Rag";
+import { exportEmployeesXlsx } from "@/lib/export";
 import type { Employee, Quadrant } from "@/lib/types";
 import { QUADRANT_DESC } from "@/lib/types";
 
