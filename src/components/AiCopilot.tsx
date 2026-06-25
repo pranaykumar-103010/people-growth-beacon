@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Send, Loader2, X } from "lucide-react";
@@ -25,18 +26,19 @@ export function AiCopilot({ open, onOpenChange }: { open: boolean; onOpenChange:
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token ?? null));
   }, []);
 
-  const transport = useRef<DefaultChatTransport<never> | null>(null);
+  const transport = useRef<DefaultChatTransport<UIMessage> | null>(null);
   if (token && !transport.current) {
-    transport.current = new DefaultChatTransport({
+    transport.current = new DefaultChatTransport<UIMessage>({
       api: "/api/chat",
       headers: { Authorization: `Bearer ${token}` },
     });
   }
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error } = useChat<UIMessage>({
     id: "hrbp-copilot",
-    transport: transport.current ?? new DefaultChatTransport({ api: "/api/chat" }),
+    transport: transport.current ?? new DefaultChatTransport<UIMessage>({ api: "/api/chat" }),
   });
+
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open, messages.length]);
 
