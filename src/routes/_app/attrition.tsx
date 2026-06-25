@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, Sparkles, Loader2, Building2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { useEmployees } from "@/hooks/use-employees";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,14 +8,41 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { generateDepartmentInsight, listDepartmentInsights } from "@/lib/ai.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/attrition")({
   component: AttritionRadar,
 });
 
+
 function AttritionRadar() {
-  const { role } = useAuth();
+  const { role, isAdmin } = useAuth();
   const { data: employees = [] } = useEmployees();
+  const qc = useQueryClient();
+  const genDept = useServerFn(generateDepartmentInsight);
+  const listDept = useServerFn(listDepartmentInsights);
+  const [busyDept, setBusyDept] = useState<string | null>(null);
+
+  const { data: deptInsights = [] } = useQuery({
+    queryKey: ["dept-insights"],
+    queryFn: () => listDept(),
+  });
+
+  const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
+
+  const runDept = async (department: string) => {
+    setBusyDept(department);
+    try {
+      await genDept({ data: { department } });
+      toast.success(`Insight ready for ${department}`);
+      qc.invalidateQueries({ queryKey: ["dept-insights"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusyDept(null); }
+  };
+
 
   // Risk distribution by sub-vertical
   const subVertData = useMemo(() => {
