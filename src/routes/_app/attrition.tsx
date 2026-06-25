@@ -96,7 +96,48 @@ function AttritionRadar() {
         </CardContent>
       </Card>
 
+      {/* Department-level insights */}
+      <section>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-display text-xl flex items-center gap-2"><Building2 className="size-5" /> Department Insights</h2>
+          <span className="text-xs text-muted-foreground">{deptInsights.length} cached · {departments.length} visible</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {departments.map((d) => {
+            const cached = deptInsights.find((x) => x.department === d);
+            return (
+              <Card key={d}>
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-display text-base">{d}</div>
+                    {isAdmin && (
+                      <Button size="sm" variant="outline" disabled={busyDept === d} onClick={() => runDept(d)} className="h-8 gap-1.5 text-xs">
+                        {busyDept === d ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                        {cached ? "Regenerate" : "Generate"}
+                      </Button>
+                    )}
+                  </div>
+                  {cached ? (
+                    <>
+                      {cached.summary && <p className="text-sm">{cached.summary}</p>}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <Bucket title="Strengths" tone="good" items={cached.strengths} />
+                        <Bucket title="Risks" tone="warning" items={cached.risks} />
+                        <Bucket title="Actions" tone="accent" items={cached.actions} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{isAdmin ? "Click Generate to produce an AI HRBP summary." : "No insight cached yet — ask your HRBP to generate one."}</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="space-y-3">
+
         <h2 className="font-display text-xl">Profiles · sorted by risk</h2>
         {sorted.map((e) => (
           <Card key={e.emp_id} id={e.emp_id}>
