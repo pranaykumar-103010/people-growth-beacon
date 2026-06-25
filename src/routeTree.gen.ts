@@ -13,8 +13,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AppTalentSegmentsRouteImport } from './routes/_app/talent-segments'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
+import { Route as AppLeadershipPipelineRouteImport } from './routes/_app/leadership-pipeline'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
@@ -37,6 +39,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTalentSegmentsRoute = AppTalentSegmentsRouteImport.update({
+  id: '/talent-segments',
+  path: '/talent-segments',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTalentMatrixRoute = AppTalentMatrixRouteImport.update({
   id: '/talent-matrix',
   path: '/talent-matrix',
@@ -45,6 +52,11 @@ const AppTalentMatrixRoute = AppTalentMatrixRouteImport.update({
 const AppRiskMethodologyRoute = AppRiskMethodologyRouteImport.update({
   id: '/risk-methodology',
   path: '/risk-methodology',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadershipPipelineRoute = AppLeadershipPipelineRouteImport.update({
+  id: '/leadership-pipeline',
+  path: '/leadership-pipeline',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAttritionRoute = AppAttritionRouteImport.update({
@@ -63,16 +75,20 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
+  '/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
+  '/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AppIndexRoute
 }
@@ -82,8 +98,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/attrition': typeof AppAttritionRoute
+  '/_app/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
+  '/_app/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
   '/_app/': typeof AppIndexRoute
 }
@@ -94,16 +112,20 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/leadership-pipeline'
     | '/risk-methodology'
     | '/talent-matrix'
+    | '/talent-segments'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/leadership-pipeline'
     | '/risk-methodology'
     | '/talent-matrix'
+    | '/talent-segments'
     | '/api/chat'
     | '/'
   id:
@@ -112,8 +134,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/admin'
     | '/_app/attrition'
+    | '/_app/leadership-pipeline'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
+    | '/_app/talent-segments'
     | '/api/chat'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -154,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/talent-segments': {
+      id: '/_app/talent-segments'
+      path: '/talent-segments'
+      fullPath: '/talent-segments'
+      preLoaderRoute: typeof AppTalentSegmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/talent-matrix': {
       id: '/_app/talent-matrix'
       path: '/talent-matrix'
@@ -166,6 +197,13 @@ declare module '@tanstack/react-router' {
       path: '/risk-methodology'
       fullPath: '/risk-methodology'
       preLoaderRoute: typeof AppRiskMethodologyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leadership-pipeline': {
+      id: '/_app/leadership-pipeline'
+      path: '/leadership-pipeline'
+      fullPath: '/leadership-pipeline'
+      preLoaderRoute: typeof AppLeadershipPipelineRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/attrition': {
@@ -188,16 +226,20 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAttritionRoute: typeof AppAttritionRoute
+  AppLeadershipPipelineRoute: typeof AppLeadershipPipelineRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
+  AppTalentSegmentsRoute: typeof AppTalentSegmentsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAttritionRoute: AppAttritionRoute,
+  AppLeadershipPipelineRoute: AppLeadershipPipelineRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
+  AppTalentSegmentsRoute: AppTalentSegmentsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
