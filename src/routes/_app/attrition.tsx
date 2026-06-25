@@ -104,7 +104,7 @@ function AttritionRadar() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {departments.map((d) => {
-            const cached = deptInsights.find((x) => x.department === d);
+            const cached = (deptInsights as Array<{ department: string; summary?: string; strengths: string[]; risks: string[]; actions: string[] }>).find((x) => x.department === d);
             return (
               <Card key={d}>
                 <CardContent className="p-5 space-y-3">
@@ -168,3 +168,18 @@ function AttritionRadar() {
     </div>
   );
 }
+
+function Bucket({ title, tone, items }: { title: string; tone: "good" | "warning" | "accent"; items: string[] }) {
+  const cls = tone === "good" ? "border-rag-green/30 bg-rag-green/5"
+    : tone === "warning" ? "border-rag-amber/30 bg-rag-amber/5"
+    : "border-accent/30 bg-accent/5";
+  return (
+    <div className={`rounded-lg border p-3 ${cls}`}>
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">{title}</div>
+      <ul className="space-y-1">
+        {items.map((it, i) => <li key={i} className="text-xs leading-snug">• {it}</li>)}
+      </ul>
+    </div>
+  );
+}
+
