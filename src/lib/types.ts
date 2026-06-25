@@ -21,7 +21,33 @@ export type Employee = {
   active: boolean;
   created_at: string;
   updated_at: string;
+  talent_segment: string | null;
+  retention_risk_band: "low" | "medium" | "high" | "critical" | null;
+  flight_risk_drivers: string[] | null;
+  ai_readiness_score: number | null;
+  ai_readiness_band: "AI Champion" | "AI Ready" | "AI Learner" | "AI Beginner" | null;
+  leadership_readiness: "ready_now" | "ready_1y" | "ready_2y" | "ic_track" | null;
+  ai_recommended_actions: string[] | null;
+  ai_insight_generated_at: string | null;
 };
+
+export const TALENT_SEGMENTS = [
+  "Future Leaders", "Core Talent", "Watch List", "Retention Priority",
+  "Emerging Talent", "Solid Contributors", "Performance Concern",
+  "Flight Risk Stars", "Critical Intervention",
+] as const;
+
+export const SEGMENT_TONE: Record<string, "good" | "warning" | "danger" | "default"> = {
+  "Future Leaders": "good", "Core Talent": "good", "Emerging Talent": "good",
+  "Watch List": "warning", "Retention Priority": "warning", "Solid Contributors": "default",
+  "Performance Concern": "warning", "Flight Risk Stars": "danger", "Critical Intervention": "danger",
+};
+
+export const LEADERSHIP_LABEL: Record<string, string> = {
+  ready_now: "Ready Now", ready_1y: "Ready in 1 Year",
+  ready_2y: "Ready in 2 Years", ic_track: "Individual Contributor",
+};
+
 
 export type AppRole = "hrbp_admin" | "function_head" | "rollup_manager" | "manager";
 
