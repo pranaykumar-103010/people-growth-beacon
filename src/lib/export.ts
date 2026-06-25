@@ -23,7 +23,15 @@ export function exportEmployeesXlsx(employees: Employee[], filenameStem = "talen
     "Succession Notes": e.succession_notes ?? "",
     "Future Career Path": e.future_career_path ?? "",
     "HRBP Insights": e.hrbp_insights ?? "",
+    "Talent Segment": e.talent_segment ?? "",
+    "Retention Risk Band": e.retention_risk_band ?? "",
+    "Flight Risk Drivers": (e.flight_risk_drivers ?? []).join("; "),
+    "Leadership Readiness": e.leadership_readiness ?? "",
+    "AI Readiness Band": e.ai_readiness_band ?? "",
+    "AI Readiness Score": e.ai_readiness_score ?? "",
+    "AI Recommended Actions": (e.ai_recommended_actions ?? []).join("; "),
   }));
+
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Team");

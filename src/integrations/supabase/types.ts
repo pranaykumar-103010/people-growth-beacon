@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      department_insights: {
+        Row: {
+          actions: string[]
+          created_at: string
+          department: string
+          generated_by: string | null
+          id: string
+          risks: string[]
+          strengths: string[]
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          actions?: string[]
+          created_at?: string
+          department: string
+          generated_by?: string | null
+          id?: string
+          risks?: string[]
+          strengths?: string[]
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actions?: string[]
+          created_at?: string
+          department?: string
+          generated_by?: string | null
+          id?: string
+          risks?: string[]
+          strengths?: string[]
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employee_directory: {
         Row: {
           created_at: string
@@ -65,74 +101,98 @@ export type Database = {
       employees: {
         Row: {
           active: boolean
+          ai_insight_generated_at: string | null
+          ai_readiness_band: string | null
+          ai_readiness_score: number | null
+          ai_recommended_actions: string[] | null
           attrition_risk: number
           created_at: string
           department: string
           email: string | null
           emp_id: string
+          flight_risk_drivers: string[] | null
           function_head_email: string | null
           future_career_path: string | null
           h2_rating: number
           hrbp_insights: string | null
           job_title: string | null
           joining_date: string
+          leadership_readiness: string | null
           level: string | null
           manager_email: string
           name: string
           nine_box_quadrant: string
           potential_rating: number
           rag_status: string
+          retention_risk_band: string | null
           rollup_manager_email: string | null
           sub_vertical: string | null
           succession_notes: string | null
+          talent_segment: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          ai_insight_generated_at?: string | null
+          ai_readiness_band?: string | null
+          ai_readiness_score?: number | null
+          ai_recommended_actions?: string[] | null
           attrition_risk?: number
           created_at?: string
           department?: string
           email?: string | null
           emp_id: string
+          flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
           h2_rating?: number
           hrbp_insights?: string | null
           job_title?: string | null
           joining_date?: string
+          leadership_readiness?: string | null
           level?: string | null
           manager_email: string
           name: string
           nine_box_quadrant?: string
           potential_rating?: number
           rag_status?: string
+          retention_risk_band?: string | null
           rollup_manager_email?: string | null
           sub_vertical?: string | null
           succession_notes?: string | null
+          talent_segment?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          ai_insight_generated_at?: string | null
+          ai_readiness_band?: string | null
+          ai_readiness_score?: number | null
+          ai_recommended_actions?: string[] | null
           attrition_risk?: number
           created_at?: string
           department?: string
           email?: string | null
           emp_id?: string
+          flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
           h2_rating?: number
           hrbp_insights?: string | null
           job_title?: string | null
           joining_date?: string
+          leadership_readiness?: string | null
           level?: string | null
           manager_email?: string
           name?: string
           nine_box_quadrant?: string
           potential_rating?: number
           rag_status?: string
+          retention_risk_band?: string | null
           rollup_manager_email?: string | null
           sub_vertical?: string | null
           succession_notes?: string | null
+          talent_segment?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -244,6 +304,7 @@ export type Database = {
         Args: { _perf: number; _pot: number }
         Returns: string
       }
+      compute_talent_fields: { Args: never; Returns: undefined }
       current_user_email: { Args: never; Returns: string }
       has_role: {
         Args: {

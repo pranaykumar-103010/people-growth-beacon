@@ -1,111 +1,61 @@
-# Talent IQ v2.1 — Hardening Plan
+# Talent IQ → AI HRBP Command Center Upgrade
 
-Builds on top of the existing v2 (Supabase + Google OAuth + 9-Box + Admin) without altering routes, layout, design tokens, or working features. Every risky swap is feature-flagged so dummy data never disappears unless real data is verified rendered.
+**Guiding rule:** every existing route, RLS rule, design token, and working feature stays intact. All changes are additive — new columns, new pages, new components, enriched existing pages.
 
----
-
-## Step 0 — Excel inspection (already done)
-
-Parsed `Talent_IQ_Data_Lovable.xlsx`: **32 rows, 12 columns**.
-
-**Headers (verbatim) → app field mapping:**
-
-| Excel header | Type | App field (`employees`) |
-|---|---|---|
-| `Employee Number` | string | `emp_id` (PK / upsert key) |
-| `Employee Name` | string | `name` |
-| `Reporting Manager` | string (name) | resolved → `manager_email` |
-| `Roll-up Manager` | string (name) | resolved → `rollup_manager_email` |
-| `Function Head` | string (name) | resolved → `function_head_email` |
-| `Job Title` | string | `job_title` |
-| `Level` | string | `level` |
-| `Department` | string | `department` |
-| `Sub -Vertical` *(note space)* | string | `sub_vertical` |
-| `Joining Date` | date | `joining_date` |
-| `H2 Rating` | number 0–5 | `h2_rating` (coerced to 1 decimal, clamped 1–5) |
-| `Potential Rating` | number 0–5 | `potential_rating` (same) |
-
-**Not present in the file** (will be derived or left null): `email`, `attrition_risk`, `rag_status`, `succession_notes`, `future_career_path`, `hrbp_insights`, `active`. Per prior approval: hybrid fill — risk/RAG computed from H2 + tenure; qualitative fields blank for HRBPs to fill.
-
-**Email derivation rule** (auto-generate `@flick2know.com`):  
-`slugify(name).replace(/\s+/g,'.') + '@flick2know.com'` — applied identically to employee + 3 manager-name columns so RLS joins line up.
+The uploaded Excel matches the 32 rows already seeded, but adds an `HRBP Insights` qualitative column we'll merge in. No schema breaks; new derived fields (talent segment, risk band, flight-risk drivers, AI readiness, leadership readiness, dept summary cache) are added as nullable columns.
 
 ---
 
-## Step 1 — Schema delta migration
+## Step 1 — Data refresh (migration + data import)
+- Add nullable columns to `employees`: `talent_segment`, `retention_risk_band` (low/medium/high/critical), `flight_risk_drivers text[]`, `ai_readiness_band`, `ai_readiness_score int`, `leadership_readiness` (ready_now / 1y / 2y / ic_track), `ai_recommended_actions text[]`, `ai_insight_generated_at timestamptz`.
+- Add table `department_insights` (department, strengths[], risks[], actions[], updated_at) — HRBP-readable.
+- Upsert `hrbp_insights` text from Excel for the 32 rows (idempotent).
+- Deterministic compute (SQL or one-shot server fn) for `talent_segment`, `retention_risk_band`, `flight_risk_drivers`, `ai_readiness_*`, `leadership_readiness` from existing fields (perf, potential, risk, tenure, level, sub-vertical).
 
-Existing tables (`employees`, `user_roles`, `profiles`, `hrbp_notes`, `employee_directory`) stay. Add:
+## Step 2 — AI Insight Engine (server functions)
+- `generateEmployeeInsight(emp_id)` → uses Lovable AI (`google/gemini-3-flash-preview`) with structured output (`Output.object`) → writes `hrbp_insights`, `ai_recommended_actions`, `flight_risk_drivers`, refreshes `retention_risk_band`.
+- `generateDepartmentInsight(department)` → upserts `department_insights`.
+- `bulkGenerateInsights()` (HRBP-admin only) — iterates employees missing insight; surfaced as a button on the Admin page.
+- All gated by `requireSupabaseAuth` + role checks; per-call only the caller's RLS-visible rows.
 
-1. `org_hierarchy` (materialized view of `employees` with `manager_email`, `rollup_manager_email`, `function_head_email`) — used by the recursive roll-up policy.
-2. `audit_log` — `id, actor_email, emp_id, field, old_value, new_value, occurred_at`. RLS: insert by `authenticated`, select by `hrbp_admin` only.
-3. Recursive SQL function `is_in_rollup_chain(viewer_email, emp_id)` for the Roll-up tier (walks `manager_email → manager's manager…`).
-4. Extend `can_view_emp` to use the recursive function (Manager / Roll-up / Function Head / Self / Admin tiers).
-5. Backfill `employees.email` column if missing (`ALTER TABLE … ADD COLUMN IF NOT EXISTS email text`).
+## Step 3 — Command Center beautification (existing route `/`)
+Add **above** existing KPIs, do not remove anything:
+- Executive Summary strip: Total visible · High-risk · Critical talent · Succession-ready · AI-readiness % · Avg perf · Avg risk · Top retention concern (single line, top driver).
+- Quick filters row: search box, department, sub-vertical, manager, risk band, segment — drives the existing "Attention Required" list and a new compact employee table below it.
+- Row click still opens the existing employee drawer (now also shows AI insight + recommended actions + flight-risk driver chips + "Regenerate with AI" button).
 
-All new tables get `GRANT` + `ENABLE RLS` + policies in the same migration.
+## Step 4 — Two new routes (additive, in nav)
+- `/talent-segments` — Performance × Risk 9-grid (Future Leaders, Retention Priority, Flight-Risk Stars, Critical Intervention, …) using existing `Card`/`Sheet` patterns from talent-matrix.
+- `/leadership-pipeline` — buckets Ready Now / 1y / 2y / IC; click bucket → drawer with rationale.
+- `/ai-readiness` — small page: org % by band + department bar chart (Recharts, same theme as Attrition Radar).
 
-## Step 2 — Real-data seed (idempotent, non-destructive)
+(I'll consolidate readiness into the Leadership page if you'd prefer fewer routes — say the word.)
 
-A single migration `INSERT … ON CONFLICT (emp_id) DO UPDATE` for all 32 rows + `employee_directory` rows for every distinct name. No `DELETE` — existing rows are preserved.
+## Step 5 — Department Insights
+- New panel on existing Attrition Radar: per-department card (strengths / risks / 3 actions), generated on demand by HRBP via "Generate dept insight" button.
 
-Verification query bundled in the migration description: `SELECT count(*) FROM employees;` must return ≥ 32 before Step 4 swaps the UI.
+## Step 6 — AI Copilot (right-side slide-over)
+- Floating button in `AppShell` (HRBP-visible). Opens a `Sheet` chat using AI SDK `useChat` against a new `/api/chat` route.
+- The route fetches the caller's RLS-visible employees server-side and passes a compact JSON snapshot into the system prompt — so answers stay scoped to what the user can see. Suggested-question chips match the brief.
 
-## Step 3 — Dashboard reads from Supabase, dummy stays as fallback
+## Step 7 — Export & polish
+- Existing "Export Team Data" stays; extend the XLSX columns to include the new fields (segment, risk band, drivers, AI readiness, leadership readiness, AI insight).
+- PDF export of the Executive Summary card strip (browser print stylesheet — no new heavy dep).
 
-- `useEmployees()` returns `{ data, source: 'live' | 'fallback' | 'error' }`.
-- If Supabase query succeeds **and** `rowCount > 0` → `live`, dummy unused.
-- If query errors or returns 0 rows → keep dummy array (kept in `src/lib/sample-employees.ts`, not deleted), `source = 'fallback'`, toast + banner shown.
-- Re-fetch on `onAuthStateChange` and after any admin upload (TanStack Query invalidate).
+## What is explicitly **not** touched
+- Auth flow, RLS policies (only new columns get the same SELECT policy), routing for `/`, `/talent-matrix`, `/attrition`, `/risk-methodology`, `/admin`, `/login`.
+- Color tokens, fonts, sidebar layout, existing drawer interactions.
+- The Manager / Rollup / Function Head / HRBP role model.
 
-## Step 4 — Admin page upgrades
-
-Existing `/admin` page stays. Additions:
-
-- **Three tabs** already exist; harden upserts to merge-only per Section 3d (never null out untouched fields — already implemented in `upsertEmployees`, verify and extend to Performance and HRBP tabs).
-- **Confirmation modal** after every upload: `X inserted, Y updated, Z skipped` with downloadable error CSV for skipped rows.
-- **Per-row validation** before insert: emp_id non-null & unique within batch; ratings integer-coerced & clamped 1–5; emails lowercased + domain-validated; invalid rows skipped + logged, not aborting batch.
-- **Inline datagrid** already exists; add audit-log write on every `updateEmployeeField` call.
-
-## Step 5 — 9-Box polish
-
-Current `talent-matrix.tsx` already implements viewport-fit grid + chips + side sheet. Verify and tighten:
-
-- `min-h-0` on grid children to enforce no outer scroll on small viewports.
-- Each chip shows Name · Sub-Vertical · Manager (already present — confirm).
-- Click chip → modal with H2, Potential, Succession Next Steps, Future Career Path, Attrition Risk (already wired — confirm fields populate from new columns).
-- Quadrant mapping uses existing `compute_quadrant` SQL function which already matches the brief's rubric exactly.
-
-## Step 6 — Export buttons
-
-Existing `exportEmployeesXlsx` is reused. Add the **"Export Team Data"** button to Dashboard + Attrition Radar for any non-admin role (already partially present — verify visibility logic and that the export pulls from the RLS-filtered query, not a global list).
-
-## Step 7 — Data-health guardrails
-
-- `<DataHealthBadge />` in `AppShell` top nav: green "Live", amber "Fallback", red "Error" — driven by `useEmployees().source`.
-- React error boundary around each route's main panel (`src/components/ErrorBoundary.tsx`) — never blank screen.
-- `console.log` parsed Excel summary on admin upload (row count, headers, skipped rows with reasons).
-- Smoke-test checklist run after each step and reported back.
+## Technical notes (non-user-facing)
+- Migration runs as one statement; all new columns nullable so existing RLS policy auto-covers them.
+- AI calls server-side only; `LOVABLE_API_KEY` already present.
+- Department cache table avoids re-paying for LLM calls every page load.
+- Copilot uses `streamText().toUIMessageStreamResponse()` per `tanstack-ai-chat` and AI Elements for the UI surface.
 
 ---
 
-## Execution order & pause points
+## Suggested execution order
+Step 1 (migration + data) → Step 2 (AI fns) → Step 3 (Command Center) → Step 4 (new routes) → Step 5 (dept insights) → Step 6 (Copilot) → Step 7 (exports/polish).
 
-I will pause for your **"continue"** between each step:
-
-1. Schema delta migration (Step 1) — you approve the migration SQL.
-2. Real-data seed migration (Step 2) — you approve the INSERT migration.
-3. `useEmployees` fallback shape + `<DataHealthBadge />` (Steps 3 + 7a) — verify dashboard still shows data (live now; dummy if RLS hides).
-4. Admin hardening: validation, confirmation modal, audit log (Step 4).
-5. 9-Box + Export verification (Steps 5–6).
-6. Error boundaries + final smoke test (Step 7b).
-
----
-
-## Out of scope (call out)
-
-- No deletion of `sample-employees.ts` fallback in this pass.
-- No rewrite of the existing `__root.tsx` domain wall or `_authenticated` gate — both already work.
-- No changes to design tokens, navigation, or route paths.
-- Audit log is HRBP-readable only; no UI surfacing in this pass.
-
-Approve and I'll execute Step 1.
+**Reply `go` to start at Step 1**, or tell me which steps to drop / reorder. Given the size I'll pause after each step for you to sanity-check, same cadence as last time.

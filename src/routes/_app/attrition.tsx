@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, Sparkles, Loader2, Building2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { useEmployees } from "@/hooks/use-employees";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,14 +8,41 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { generateDepartmentInsight, listDepartmentInsights } from "@/lib/ai.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/attrition")({
   component: AttritionRadar,
 });
 
+
 function AttritionRadar() {
-  const { role } = useAuth();
+  const { role, isAdmin } = useAuth();
   const { data: employees = [] } = useEmployees();
+  const qc = useQueryClient();
+  const genDept = useServerFn(generateDepartmentInsight);
+  const listDept = useServerFn(listDepartmentInsights);
+  const [busyDept, setBusyDept] = useState<string | null>(null);
+
+  const { data: deptInsights = [] } = useQuery({
+    queryKey: ["dept-insights"],
+    queryFn: () => listDept(),
+  });
+
+  const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
+
+  const runDept = async (department: string) => {
+    setBusyDept(department);
+    try {
+      await genDept({ data: { department } });
+      toast.success(`Insight ready for ${department}`);
+      qc.invalidateQueries({ queryKey: ["dept-insights"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusyDept(null); }
+  };
+
 
   // Risk distribution by sub-vertical
   const subVertData = useMemo(() => {
@@ -69,7 +96,48 @@ function AttritionRadar() {
         </CardContent>
       </Card>
 
+      {/* Department-level insights */}
+      <section>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-display text-xl flex items-center gap-2"><Building2 className="size-5" /> Department Insights</h2>
+          <span className="text-xs text-muted-foreground">{deptInsights.length} cached · {departments.length} visible</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {departments.map((d) => {
+            const cached = (deptInsights as Array<{ department: string; summary?: string; strengths: string[]; risks: string[]; actions: string[] }>).find((x) => x.department === d);
+            return (
+              <Card key={d}>
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-display text-base">{d}</div>
+                    {isAdmin && (
+                      <Button size="sm" variant="outline" disabled={busyDept === d} onClick={() => runDept(d)} className="h-8 gap-1.5 text-xs">
+                        {busyDept === d ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                        {cached ? "Regenerate" : "Generate"}
+                      </Button>
+                    )}
+                  </div>
+                  {cached ? (
+                    <>
+                      {cached.summary && <p className="text-sm">{cached.summary}</p>}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <Bucket title="Strengths" tone="good" items={cached.strengths} />
+                        <Bucket title="Risks" tone="warning" items={cached.risks} />
+                        <Bucket title="Actions" tone="accent" items={cached.actions} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{isAdmin ? "Click Generate to produce an AI HRBP summary." : "No insight cached yet — ask your HRBP to generate one."}</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="space-y-3">
+
         <h2 className="font-display text-xl">Profiles · sorted by risk</h2>
         {sorted.map((e) => (
           <Card key={e.emp_id} id={e.emp_id}>
@@ -100,3 +168,18 @@ function AttritionRadar() {
     </div>
   );
 }
+
+function Bucket({ title, tone, items }: { title: string; tone: "good" | "warning" | "accent"; items: string[] }) {
+  const cls = tone === "good" ? "border-rag-green/30 bg-rag-green/5"
+    : tone === "warning" ? "border-rag-amber/30 bg-rag-amber/5"
+    : "border-accent/30 bg-accent/5";
+  return (
+    <div className={`rounded-lg border p-3 ${cls}`}>
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">{title}</div>
+      <ul className="space-y-1">
+        {items.map((it, i) => <li key={i} className="text-xs leading-snug">• {it}</li>)}
+      </ul>
+    </div>
+  );
+}
+
