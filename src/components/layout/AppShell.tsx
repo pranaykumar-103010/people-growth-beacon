@@ -1,16 +1,20 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2 } from "lucide-react";
+import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Target, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { DataHealthBadge } from "@/components/DataHealthBadge";
+import { AiCopilotLauncher } from "@/components/AiCopilot";
 
 const BASE_NAV = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
-  { to: "/talent-matrix", label: "Talent Matrix", icon: Grid3x3 },
+  { to: "/talent-matrix", label: "9-Box Matrix", icon: Grid3x3 },
+  { to: "/talent-segments", label: "Talent Segments", icon: Target },
+  { to: "/leadership-pipeline", label: "Leadership Pipeline", icon: Crown },
   { to: "/attrition", label: "Attrition Radar", icon: AlertTriangle },
   { to: "/risk-methodology", label: "Risk Methodology", icon: Calculator },
 ] as const;
+
 
 const ROLE_LABEL: Record<string, string> = {
   hrbp_admin: "HRBP Admin",
@@ -96,6 +100,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         {children}
       </main>
+      <AiCopilotLauncher />
     </div>
   );
 }
+
