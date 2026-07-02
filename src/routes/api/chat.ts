@@ -3,8 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = createFileRoute("/api/chat")({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
