@@ -4,6 +4,7 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 
 export const Route = createFileRoute("/api/chat")({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
