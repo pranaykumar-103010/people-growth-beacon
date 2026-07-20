@@ -121,6 +121,10 @@ export type Database = {
           level: string | null
           manager_email: string
           name: string
+          new_joiner_exp_feedback: number | null
+          new_joiner_mgr_feedback: number | null
+          new_joiner_risk_score: number | null
+          nine_box_override: string | null
           nine_box_quadrant: string
           potential_rating: number
           rag_status: string
@@ -153,6 +157,10 @@ export type Database = {
           level?: string | null
           manager_email: string
           name: string
+          new_joiner_exp_feedback?: number | null
+          new_joiner_mgr_feedback?: number | null
+          new_joiner_risk_score?: number | null
+          nine_box_override?: string | null
           nine_box_quadrant?: string
           potential_rating?: number
           rag_status?: string
@@ -185,6 +193,10 @@ export type Database = {
           level?: string | null
           manager_email?: string
           name?: string
+          new_joiner_exp_feedback?: number | null
+          new_joiner_mgr_feedback?: number | null
+          new_joiner_risk_score?: number | null
+          nine_box_override?: string | null
           nine_box_quadrant?: string
           potential_rating?: number
           rag_status?: string
@@ -231,6 +243,27 @@ export type Database = {
             referencedColumns: ["emp_id"]
           },
         ]
+      }
+      hrbp_scopes: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          user_email?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -315,6 +348,10 @@ export type Database = {
       }
       is_in_rollup_chain: {
         Args: { _emp_id: string; _viewer_email: string }
+        Returns: boolean
+      }
+      is_scoped_hrbp: {
+        Args: { _department: string; _email: string }
         Returns: boolean
       }
     }
