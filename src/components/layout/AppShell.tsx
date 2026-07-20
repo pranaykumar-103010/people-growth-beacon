@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Target, Crown } from "lucide-react";
+import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Target, Crown, UserPlus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,8 @@ import { AiCopilotLauncher } from "@/components/AiCopilot";
 const BASE_NAV = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
   { to: "/talent-matrix", label: "9-Box Matrix", icon: Grid3x3 },
+  { to: "/high-performers", label: "High Performers", icon: Trophy },
+  { to: "/new-joiners", label: "New Joiners", icon: UserPlus },
   { to: "/talent-segments", label: "Talent Segments", icon: Target },
   { to: "/leadership-pipeline", label: "Leadership Pipeline", icon: Crown },
   { to: "/attrition", label: "Attrition Radar", icon: AlertTriangle },

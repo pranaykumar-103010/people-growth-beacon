@@ -16,7 +16,9 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppTalentSegmentsRouteImport } from './routes/_app/talent-segments'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
+import { Route as AppNewJoinersRouteImport } from './routes/_app/new-joiners'
 import { Route as AppLeadershipPipelineRouteImport } from './routes/_app/leadership-pipeline'
+import { Route as AppHighPerformersRouteImport } from './routes/_app/high-performers'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
@@ -54,9 +56,19 @@ const AppRiskMethodologyRoute = AppRiskMethodologyRouteImport.update({
   path: '/risk-methodology',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNewJoinersRoute = AppNewJoinersRouteImport.update({
+  id: '/new-joiners',
+  path: '/new-joiners',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLeadershipPipelineRoute = AppLeadershipPipelineRouteImport.update({
   id: '/leadership-pipeline',
   path: '/leadership-pipeline',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHighPerformersRoute = AppHighPerformersRouteImport.update({
+  id: '/high-performers',
+  path: '/high-performers',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAttritionRoute = AppAttritionRouteImport.update({
@@ -75,7 +87,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
   '/talent-segments': typeof AppTalentSegmentsRoute
@@ -85,7 +99,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
   '/talent-segments': typeof AppTalentSegmentsRoute
@@ -98,7 +114,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/attrition': typeof AppAttritionRoute
+  '/_app/high-performers': typeof AppHighPerformersRoute
   '/_app/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/_app/new-joiners': typeof AppNewJoinersRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
   '/_app/talent-segments': typeof AppTalentSegmentsRoute
@@ -112,7 +130,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/high-performers'
     | '/leadership-pipeline'
+    | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
     | '/talent-segments'
@@ -122,7 +142,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/high-performers'
     | '/leadership-pipeline'
+    | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
     | '/talent-segments'
@@ -134,7 +156,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/admin'
     | '/_app/attrition'
+    | '/_app/high-performers'
     | '/_app/leadership-pipeline'
+    | '/_app/new-joiners'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
     | '/_app/talent-segments'
@@ -199,11 +223,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRiskMethodologyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/new-joiners': {
+      id: '/_app/new-joiners'
+      path: '/new-joiners'
+      fullPath: '/new-joiners'
+      preLoaderRoute: typeof AppNewJoinersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/leadership-pipeline': {
       id: '/_app/leadership-pipeline'
       path: '/leadership-pipeline'
       fullPath: '/leadership-pipeline'
       preLoaderRoute: typeof AppLeadershipPipelineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/high-performers': {
+      id: '/_app/high-performers'
+      path: '/high-performers'
+      fullPath: '/high-performers'
+      preLoaderRoute: typeof AppHighPerformersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/attrition': {
@@ -226,7 +264,9 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAttritionRoute: typeof AppAttritionRoute
+  AppHighPerformersRoute: typeof AppHighPerformersRoute
   AppLeadershipPipelineRoute: typeof AppLeadershipPipelineRoute
+  AppNewJoinersRoute: typeof AppNewJoinersRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
   AppTalentSegmentsRoute: typeof AppTalentSegmentsRoute
@@ -236,7 +276,9 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAttritionRoute: AppAttritionRoute,
+  AppHighPerformersRoute: AppHighPerformersRoute,
   AppLeadershipPipelineRoute: AppLeadershipPipelineRoute,
+  AppNewJoinersRoute: AppNewJoinersRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
   AppTalentSegmentsRoute: AppTalentSegmentsRoute,
@@ -253,13 +295,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

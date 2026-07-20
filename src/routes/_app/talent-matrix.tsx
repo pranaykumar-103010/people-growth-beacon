@@ -9,6 +9,10 @@ import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
 import type { Employee, Quadrant } from "@/lib/types";
 import { QUADRANT_DESC } from "@/lib/types";
+import { moveEmployeeQuadrant } from "@/lib/employees.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/talent-matrix")({
   component: TalentMatrix,
@@ -35,9 +39,12 @@ const COLOR: Record<Quadrant, string> = {
 
 function TalentMatrix() {
   const { data: employees = [] } = useEmployees();
-  const { role } = useAuth();
+  const { role, isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const move = useServerFn(moveEmployeeQuadrant);
   const [activeQuad, setActiveQuad] = useState<Quadrant | null>(null);
   const [picked, setPicked] = useState<Employee | null>(null);
+  const [dragOver, setDragOver] = useState<Quadrant | null>(null);
 
   const byQuadrant = useMemo(() => {
     const m = {} as Record<Quadrant, Employee[]>;
@@ -49,13 +56,27 @@ function TalentMatrix() {
     return m;
   }, [employees]);
 
+  const onDrop = async (target: Quadrant, empId: string) => {
+    setDragOver(null);
+    if (!isAdmin) return;
+    const emp = employees.find((e) => e.emp_id === empId);
+    if (!emp || emp.nine_box_quadrant === target) return;
+    try {
+      await move({ data: { emp_id: empId, quadrant: target } });
+      toast.success(`${emp.name} moved to ${target}`);
+      qc.invalidateQueries({ queryKey: ["employees"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Move failed");
+    }
+  };
+
   return (
     <div className="px-5 md:px-8 pt-5 md:pt-6 pb-2 max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-screen flex flex-col overflow-hidden">
       <header className="mb-4 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
           <h1 className="font-display text-2xl md:text-3xl">9-Box · Performance × Potential</h1>
-          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile.</p>
+          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile{isAdmin ? " · drag anyone into another quadrant to override" : ""}.</p>
         </div>
         <Button size="sm" variant="outline" className="gap-1.5" disabled={employees.length === 0} onClick={() => exportEmployeesXlsx(employees, `talent-matrix-${role ?? "team"}`)}>
           <Download className="size-3.5" /> Export Team
@@ -73,7 +94,13 @@ function TalentMatrix() {
             const list = byQuadrant[label] ?? [];
             const color = COLOR[label];
             return (
-              <div key={label} className={`rounded-xl border ${color} flex flex-col min-h-0 overflow-hidden`}>
+              <div
+                key={label}
+                onDragOver={(ev) => { if (isAdmin) { ev.preventDefault(); setDragOver(label); } }}
+                onDragLeave={() => setDragOver((cur) => (cur === label ? null : cur))}
+                onDrop={(ev) => { ev.preventDefault(); const id = ev.dataTransfer.getData("text/plain"); if (id) onDrop(label, id); }}
+                className={`rounded-xl border ${color} flex flex-col min-h-0 overflow-hidden transition ${dragOver === label ? "ring-2 ring-accent" : ""}`}
+              >
                 <button
                   onClick={() => setActiveQuad(label)}
                   className="flex items-center justify-between px-2.5 py-1.5 border-b border-current/20 hover:bg-black/5 transition flex-shrink-0"
@@ -89,10 +116,15 @@ function TalentMatrix() {
                     <button
                       key={e.emp_id}
                       onClick={() => setPicked(e)}
-                      title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}`}
-                      className="w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight"
+                      draggable={isAdmin}
+                      onDragStart={(ev) => { ev.dataTransfer.setData("text/plain", e.emp_id); ev.dataTransfer.effectAllowed = "move"; }}
+                      title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}${e.nine_box_override ? " · manual override" : ""}`}
+                      className={`w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
                     >
-                      <div className="font-medium text-foreground truncate">{e.name}</div>
+                      <div className="font-medium text-foreground truncate flex items-center gap-1">
+                        {e.name}
+                        {e.nine_box_override && <span className="text-[9px] opacity-60">•</span>}
+                      </div>
                       <div className="text-muted-foreground truncate">
                         {(e.sub_vertical ?? "—")} · {e.manager_email.split("@")[0]}
                       </div>
