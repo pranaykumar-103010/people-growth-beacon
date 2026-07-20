@@ -29,6 +29,10 @@ export type Employee = {
   leadership_readiness: "ready_now" | "ready_1y" | "ready_2y" | "ic_track" | null;
   ai_recommended_actions: string[] | null;
   ai_insight_generated_at: string | null;
+  nine_box_override: string | null;
+  new_joiner_exp_feedback: number | null;
+  new_joiner_mgr_feedback: number | null;
+  new_joiner_risk_score: number | null;
 };
 
 export const TALENT_SEGMENTS = [
