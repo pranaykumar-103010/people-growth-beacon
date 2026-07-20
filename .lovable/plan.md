@@ -1,61 +1,61 @@
-# Talent IQ → AI HRBP Command Center Upgrade
 
-**Guiding rule:** every existing route, RLS rule, design token, and working feature stays intact. All changes are additive — new columns, new pages, new components, enriched existing pages.
+## Scope
 
-The uploaded Excel matches the 32 rows already seeded, but adds an `HRBP Insights` qualitative column we'll merge in. No schema breaks; new derived fields (talent segment, risk band, flight-risk drivers, AI readiness, leadership readiness, dept summary cache) are added as nullable columns.
+Ship the enhancement prompt on top of the existing app. No route paths, shell, or theme changes.
 
----
+## 1. Data fix — Riya Sethi
+- Re-ingest current uploaded file (`Talent_IQ_Data_Lovable-3.xlsx`) via SQL migration. Riya's real H2 = 1.30, Potential = 3.10 (previously wrong). Also refresh HRBP Insights for all 32 rows. Re-run `compute_talent_fields()`.
 
-## Step 1 — Data refresh (migration + data import)
-- Add nullable columns to `employees`: `talent_segment`, `retention_risk_band` (low/medium/high/critical), `flight_risk_drivers text[]`, `ai_readiness_band`, `ai_readiness_score int`, `leadership_readiness` (ready_now / 1y / 2y / ic_track), `ai_recommended_actions text[]`, `ai_insight_generated_at timestamptz`.
-- Add table `department_insights` (department, strengths[], risks[], actions[], updated_at) — HRBP-readable.
-- Upsert `hrbp_insights` text from Excel for the 32 rows (idempotent).
-- Deterministic compute (SQL or one-shot server fn) for `talent_segment`, `retention_risk_band`, `flight_risk_drivers`, `ai_readiness_*`, `leadership_readiness` from existing fields (perf, potential, risk, tenure, level, sub-vertical).
+## 2. RBAC by email (department-scoped HRBPs)
+- Extend `has_role` model with per-user department scope table `hrbp_scopes(user_email, department)`.
+- New SECURITY DEFINER `visible_departments(email)` returning array; also `can_view_department(email, dept)`.
+- Update `employees` SELECT policy: allow if
+  - `has_role(auth.uid(),'hrbp_admin')` for existing tech HRBP (current user), OR
+  - viewer email ∈ `hrbp_scopes` AND `department` matches, OR
+  - existing manager/rollup/function-head/self via `can_view_emp_v2` chain, OR
+  - Sumiti override (all Tech + Product + Sales etc. — treat as executive: see everyone the managers combined can see = essentially all).
+- Seed scopes:
+  - `ritika.sharma@flick2know.com` → Product, Marketing
+  - `tanvi@flick2know.com` → Sales, Customer Success
+  - `sumiti@flick2know.com` → executive role (new role `executive` or reuse `hrbp_admin` w/ read-only flag). Simpler: add role `executive` with policy = read all, no HRBP-insight write.
+- `handle_new_user()` updated: map these three emails to their roles/scopes on signup.
+- `hrbp_insights` visibility on rows: reporting/rollup/function-heads must NOT see the `hrbp_insights` column contents. Enforce via a VIEW `employees_for_manager` and swap client fetch based on role, OR simpler: in the client, hide the field in the drawer when `!isAdmin && !isHRBPScoped`. Use client-side hide (RLS already grants read of the row; column-level restriction is a bigger change — mask in the UI only).
 
-## Step 2 — AI Insight Engine (server functions)
-- `generateEmployeeInsight(emp_id)` → uses Lovable AI (`google/gemini-3-flash-preview`) with structured output (`Output.object`) → writes `hrbp_insights`, `ai_recommended_actions`, `flight_risk_drivers`, refreshes `retention_risk_band`.
-- `generateDepartmentInsight(department)` → upserts `department_insights`.
-- `bulkGenerateInsights()` (HRBP-admin only) — iterates employees missing insight; surfaced as a button on the Admin page.
-- All gated by `requireSupabaseAuth` + role checks; per-call only the caller's RLS-visible rows.
+## 3. 9-Box drag & drop
+- Add react-dnd (or lightweight HTML5 drag events) on `talent-matrix.tsx` cards.
+- On drop, call new server fn `moveEmployeeQuadrant(emp_id, target)` that:
+  - Verifies caller is that emp's reporting/rollup manager (via `can_view_emp_v2` + explicit manager check), else 403.
+  - Sets `h2_rating` and `potential_rating` to the midpoint of target quadrant bands (H=4.25, M=3.0, L=2.0) OR stores an override column `nine_box_override`. Simpler: override column, and `nine_box_quadrant` becomes computed-or-override.
+- Add larger card sizing + higher-contrast box background tokens in `styles.css`.
 
-## Step 3 — Command Center beautification (existing route `/`)
-Add **above** existing KPIs, do not remove anything:
-- Executive Summary strip: Total visible · High-risk · Critical talent · Succession-ready · AI-readiness % · Avg perf · Avg risk · Top retention concern (single line, top driver).
-- Quick filters row: search box, department, sub-vertical, manager, risk band, segment — drives the existing "Attention Required" list and a new compact employee table below it.
-- Row click still opens the existing employee drawer (now also shows AI insight + recommended actions + flight-risk driver chips + "Regenerate with AI" button).
+## 4. New Joiners Assessment tab
+- New route `src/routes/_app/new-joiners.tsx`. Add nav item in AppShell.
+- Table: employees where `joining_date >= now() - 90 days` (currently 0 rows likely; still ship UI).
+- Add columns to `employees`: `exp_feedback_score numeric`, `mgr_feedback_score numeric`, `onboarding_risk numeric` (generated: `0.5*exp + 0.5*mgr` inverted to 0-100 risk band).
+- Upload dialog accepting CSV/XLSX; parses `emp_id, exp_feedback_score, mgr_feedback_score`; admin-only server fn `upsertOnboardingFeedback`.
 
-## Step 4 — Two new routes (additive, in nav)
-- `/talent-segments` — Performance × Risk 9-grid (Future Leaders, Retention Priority, Flight-Risk Stars, Critical Intervention, …) using existing `Card`/`Sheet` patterns from talent-matrix.
-- `/leadership-pipeline` — buckets Ready Now / 1y / 2y / IC; click bucket → drawer with rationale.
-- `/ai-readiness` — small page: org % by band + department bar chart (Recharts, same theme as Attrition Radar).
+## 5. Attrition Radar cascading AI summary
+- Rework `attrition.tsx` "Department Insights": cascading selects Department → Sub-Vertical → Reporting Manager → Generate.
+- Server fn `generateScopedAttritionInsight({department, subVertical?, manager?})` — same shape as `generateDepartmentInsight` but with filters. Cache in `department_insights` keyed by `(department, sub_vertical, manager)`; extend table PK/unique index.
 
-(I'll consolidate readiness into the Leadership page if you'd prefer fewer routes — say the word.)
+## 6. High Performers segment
+- New route `src/routes/_app/high-performers.tsx`. Nav link.
+- Filter: `annual_rating >= 3.75`. Since we don't store annual, use `(h2_rating + potential_rating)/2 >= 3.75` OR store `annual_rating` column (add nullable, set from data if we have it — Excel doesn't). Use derived score `h2_rating >= 3.75` since that's what we have.
+- Rows visible respect existing RLS automatically.
 
-## Step 5 — Department Insights
-- New panel on existing Attrition Radar: per-department card (strengths / risks / 3 actions), generated on demand by HRBP via "Generate dept insight" button.
+## Not doing
+- Column-level SQL restriction on `hrbp_insights` (client-side mask only — trade-off acceptable given time; noted).
+- PDF export.
 
-## Step 6 — AI Copilot (right-side slide-over)
-- Floating button in `AppShell` (HRBP-visible). Opens a `Sheet` chat using AI SDK `useChat` against a new `/api/chat` route.
-- The route fetches the caller's RLS-visible employees server-side and passes a compact JSON snapshot into the system prompt — so answers stay scoped to what the user can see. Suggested-question chips match the brief.
-
-## Step 7 — Export & polish
-- Existing "Export Team Data" stays; extend the XLSX columns to include the new fields (segment, risk band, drivers, AI readiness, leadership readiness, AI insight).
-- PDF export of the Executive Summary card strip (browser print stylesheet — no new heavy dep).
-
-## What is explicitly **not** touched
-- Auth flow, RLS policies (only new columns get the same SELECT policy), routing for `/`, `/talent-matrix`, `/attrition`, `/risk-methodology`, `/admin`, `/login`.
-- Color tokens, fonts, sidebar layout, existing drawer interactions.
-- The Manager / Rollup / Function Head / HRBP role model.
-
-## Technical notes (non-user-facing)
-- Migration runs as one statement; all new columns nullable so existing RLS policy auto-covers them.
-- AI calls server-side only; `LOVABLE_API_KEY` already present.
-- Department cache table avoids re-paying for LLM calls every page load.
-- Copilot uses `streamText().toUIMessageStreamResponse()` per `tanstack-ai-chat` and AI Elements for the UI surface.
-
----
-
-## Suggested execution order
-Step 1 (migration + data) → Step 2 (AI fns) → Step 3 (Command Center) → Step 4 (new routes) → Step 5 (dept insights) → Step 6 (Copilot) → Step 7 (exports/polish).
-
-**Reply `go` to start at Step 1**, or tell me which steps to drop / reorder. Given the size I'll pause after each step for you to sanity-check, same cadence as last time.
+## File touches
+- `supabase migration` (data re-ingest, hrbp_scopes, executive role, RLS update, onboarding cols, dept_insights unique key, handle_new_user update)
+- `src/lib/types.ts`, `src/hooks/use-auth.ts` (executive role)
+- `src/lib/ai.functions.ts` (new scoped attrition fn)
+- `src/lib/employees.functions.ts` (move quadrant, upsert onboarding)
+- `src/routes/_app/talent-matrix.tsx` (drag/drop + bigger contrast)
+- `src/routes/_app/attrition.tsx` (cascading UI)
+- `src/routes/_app/new-joiners.tsx` (new)
+- `src/routes/_app/high-performers.tsx` (new)
+- `src/components/layout/AppShell.tsx` (2 nav links)
+- Employee drawer: mask `hrbp_insights` for non-HRBP viewers
+- `src/styles.css` (9-box zone tokens)
