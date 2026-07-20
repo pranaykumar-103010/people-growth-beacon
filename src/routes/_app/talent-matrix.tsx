@@ -76,7 +76,7 @@ function TalentMatrix() {
         <div>
           <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
           <h1 className="font-display text-2xl md:text-3xl">9-Box · Performance × Potential</h1>
-          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile.</p>
+          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile{isAdmin ? " · drag anyone into another quadrant to override" : ""}.</p>
         </div>
         <Button size="sm" variant="outline" className="gap-1.5" disabled={employees.length === 0} onClick={() => exportEmployeesXlsx(employees, `talent-matrix-${role ?? "team"}`)}>
           <Download className="size-3.5" /> Export Team
