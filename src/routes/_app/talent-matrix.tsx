@@ -94,7 +94,13 @@ function TalentMatrix() {
             const list = byQuadrant[label] ?? [];
             const color = COLOR[label];
             return (
-              <div key={label} className={`rounded-xl border ${color} flex flex-col min-h-0 overflow-hidden`}>
+              <div
+                key={label}
+                onDragOver={(ev) => { if (isAdmin) { ev.preventDefault(); setDragOver(label); } }}
+                onDragLeave={() => setDragOver((cur) => (cur === label ? null : cur))}
+                onDrop={(ev) => { ev.preventDefault(); const id = ev.dataTransfer.getData("text/plain"); if (id) onDrop(label, id); }}
+                className={`rounded-xl border ${color} flex flex-col min-h-0 overflow-hidden transition ${dragOver === label ? "ring-2 ring-accent" : ""}`}
+              >
                 <button
                   onClick={() => setActiveQuad(label)}
                   className="flex items-center justify-between px-2.5 py-1.5 border-b border-current/20 hover:bg-black/5 transition flex-shrink-0"
@@ -110,10 +116,15 @@ function TalentMatrix() {
                     <button
                       key={e.emp_id}
                       onClick={() => setPicked(e)}
-                      title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}`}
-                      className="w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight"
+                      draggable={isAdmin}
+                      onDragStart={(ev) => { ev.dataTransfer.setData("text/plain", e.emp_id); ev.dataTransfer.effectAllowed = "move"; }}
+                      title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}${e.nine_box_override ? " · manual override" : ""}`}
+                      className={`w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
                     >
-                      <div className="font-medium text-foreground truncate">{e.name}</div>
+                      <div className="font-medium text-foreground truncate flex items-center gap-1">
+                        {e.name}
+                        {e.nine_box_override && <span className="text-[9px] opacity-60">•</span>}
+                      </div>
                       <div className="text-muted-foreground truncate">
                         {(e.sub_vertical ?? "—")} · {e.manager_email.split("@")[0]}
                       </div>
