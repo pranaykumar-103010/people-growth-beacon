@@ -177,3 +177,48 @@ export const updateEmployeeField = createServerFn({ method: "POST" })
 
     return { ok: true, changed: auditRows.length };
   });
+
+// Drag-and-drop 9-box override — admin only
+export const moveEmployeeQuadrant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    emp_id: z.string().min(1),
+    quadrant: z.string().min(1),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { supabase, userId } = context as unknown as { supabase: any; userId: string };
+    await ensureAdmin(supabase, userId);
+    const actor = await actorEmail(supabase);
+    const { error } = await supabase.from("employees")
+      .update({ nine_box_override: data.quadrant, nine_box_quadrant: data.quadrant })
+      .eq("emp_id", data.emp_id);
+    if (error) throw new Error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_email: actor, emp_id: data.emp_id, field: "nine_box_override",
+      old_value: null, new_value: data.quadrant,
+    });
+    return { ok: true };
+  });
+
+// New Joiner assessment — admin only. Risk = 0.5 * (5 - exp) * 20 + 0.5 * (5 - mgr) * 20 (higher when feedback is low)
+export const upsertNewJoinerAssessment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    emp_id: z.string().min(1),
+    exp_feedback: z.number().min(0).max(5),
+    mgr_feedback: z.number().min(0).max(5),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { supabase, userId } = context as unknown as { supabase: any; userId: string };
+    await ensureAdmin(supabase, userId);
+    const risk = Math.round(0.5 * (5 - data.exp_feedback) * 20 + 0.5 * (5 - data.mgr_feedback) * 20);
+    const { error } = await supabase.from("employees").update({
+      new_joiner_exp_feedback: data.exp_feedback,
+      new_joiner_mgr_feedback: data.mgr_feedback,
+      new_joiner_risk_score: risk,
+    }).eq("emp_id", data.emp_id);
+    if (error) throw new Error(error.message);
+    return { ok: true, risk };
+  });
