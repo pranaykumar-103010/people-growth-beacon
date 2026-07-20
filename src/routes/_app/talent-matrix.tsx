@@ -9,6 +9,10 @@ import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
 import type { Employee, Quadrant } from "@/lib/types";
 import { QUADRANT_DESC } from "@/lib/types";
+import { moveEmployeeQuadrant } from "@/lib/employees.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/talent-matrix")({
   component: TalentMatrix,
@@ -35,9 +39,12 @@ const COLOR: Record<Quadrant, string> = {
 
 function TalentMatrix() {
   const { data: employees = [] } = useEmployees();
-  const { role } = useAuth();
+  const { role, isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const move = useServerFn(moveEmployeeQuadrant);
   const [activeQuad, setActiveQuad] = useState<Quadrant | null>(null);
   const [picked, setPicked] = useState<Employee | null>(null);
+  const [dragOver, setDragOver] = useState<Quadrant | null>(null);
 
   const byQuadrant = useMemo(() => {
     const m = {} as Record<Quadrant, Employee[]>;
@@ -48,6 +55,20 @@ function TalentMatrix() {
     }
     return m;
   }, [employees]);
+
+  const onDrop = async (target: Quadrant, empId: string) => {
+    setDragOver(null);
+    if (!isAdmin) return;
+    const emp = employees.find((e) => e.emp_id === empId);
+    if (!emp || emp.nine_box_quadrant === target) return;
+    try {
+      await move({ data: { emp_id: empId, quadrant: target } });
+      toast.success(`${emp.name} moved to ${target}`);
+      qc.invalidateQueries({ queryKey: ["employees"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Move failed");
+    }
+  };
 
   return (
     <div className="px-5 md:px-8 pt-5 md:pt-6 pb-2 max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-screen flex flex-col overflow-hidden">
