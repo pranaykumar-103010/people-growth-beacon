@@ -16,6 +16,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppTalentSegmentsRouteImport } from './routes/_app/talent-segments'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
+import { Route as AppNewJoinersRouteImport } from './routes/_app/new-joiners'
 import { Route as AppLeadershipPipelineRouteImport } from './routes/_app/leadership-pipeline'
 import { Route as AppHighPerformersRouteImport } from './routes/_app/high-performers'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
@@ -55,6 +56,11 @@ const AppRiskMethodologyRoute = AppRiskMethodologyRouteImport.update({
   path: '/risk-methodology',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNewJoinersRoute = AppNewJoinersRouteImport.update({
+  id: '/new-joiners',
+  path: '/new-joiners',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLeadershipPipelineRoute = AppLeadershipPipelineRouteImport.update({
   id: '/leadership-pipeline',
   path: '/leadership-pipeline',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/attrition': typeof AppAttritionRoute
   '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
   '/talent-segments': typeof AppTalentSegmentsRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/attrition': typeof AppAttritionRoute
   '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
   '/talent-segments': typeof AppTalentSegmentsRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_app/attrition': typeof AppAttritionRoute
   '/_app/high-performers': typeof AppHighPerformersRoute
   '/_app/leadership-pipeline': typeof AppLeadershipPipelineRoute
+  '/_app/new-joiners': typeof AppNewJoinersRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
   '/_app/talent-segments': typeof AppTalentSegmentsRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/attrition'
     | '/high-performers'
     | '/leadership-pipeline'
+    | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
     | '/talent-segments'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/attrition'
     | '/high-performers'
     | '/leadership-pipeline'
+    | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
     | '/talent-segments'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/_app/attrition'
     | '/_app/high-performers'
     | '/_app/leadership-pipeline'
+    | '/_app/new-joiners'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
     | '/_app/talent-segments'
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRiskMethodologyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/new-joiners': {
+      id: '/_app/new-joiners'
+      path: '/new-joiners'
+      fullPath: '/new-joiners'
+      preLoaderRoute: typeof AppNewJoinersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/leadership-pipeline': {
       id: '/_app/leadership-pipeline'
       path: '/leadership-pipeline'
@@ -247,6 +266,7 @@ interface AppRouteChildren {
   AppAttritionRoute: typeof AppAttritionRoute
   AppHighPerformersRoute: typeof AppHighPerformersRoute
   AppLeadershipPipelineRoute: typeof AppLeadershipPipelineRoute
+  AppNewJoinersRoute: typeof AppNewJoinersRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
   AppTalentSegmentsRoute: typeof AppTalentSegmentsRoute
@@ -258,6 +278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAttritionRoute: AppAttritionRoute,
   AppHighPerformersRoute: AppHighPerformersRoute,
   AppLeadershipPipelineRoute: AppLeadershipPipelineRoute,
+  AppNewJoinersRoute: AppNewJoinersRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
   AppTalentSegmentsRoute: AppTalentSegmentsRoute,
