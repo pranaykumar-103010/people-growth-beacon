@@ -17,6 +17,7 @@ import { Route as AppTalentSegmentsRouteImport } from './routes/_app/talent-segm
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
 import { Route as AppLeadershipPipelineRouteImport } from './routes/_app/leadership-pipeline'
+import { Route as AppHighPerformersRouteImport } from './routes/_app/high-performers'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 
@@ -59,6 +60,11 @@ const AppLeadershipPipelineRoute = AppLeadershipPipelineRouteImport.update({
   path: '/leadership-pipeline',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHighPerformersRoute = AppHighPerformersRouteImport.update({
+  id: '/high-performers',
+  path: '/high-performers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAttritionRoute = AppAttritionRouteImport.update({
   id: '/attrition',
   path: '/attrition',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
+  '/high-performers': typeof AppHighPerformersRoute
   '/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/attrition': typeof AppAttritionRoute
+  '/_app/high-performers': typeof AppHighPerformersRoute
   '/_app/leadership-pipeline': typeof AppLeadershipPipelineRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/high-performers'
     | '/leadership-pipeline'
     | '/risk-methodology'
     | '/talent-matrix'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/attrition'
+    | '/high-performers'
     | '/leadership-pipeline'
     | '/risk-methodology'
     | '/talent-matrix'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/admin'
     | '/_app/attrition'
+    | '/_app/high-performers'
     | '/_app/leadership-pipeline'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
@@ -206,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadershipPipelineRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/high-performers': {
+      id: '/_app/high-performers'
+      path: '/high-performers'
+      fullPath: '/high-performers'
+      preLoaderRoute: typeof AppHighPerformersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/attrition': {
       id: '/_app/attrition'
       path: '/attrition'
@@ -226,6 +245,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAttritionRoute: typeof AppAttritionRoute
+  AppHighPerformersRoute: typeof AppHighPerformersRoute
   AppLeadershipPipelineRoute: typeof AppLeadershipPipelineRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
@@ -236,6 +256,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAttritionRoute: AppAttritionRoute,
+  AppHighPerformersRoute: AppHighPerformersRoute,
   AppLeadershipPipelineRoute: AppLeadershipPipelineRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
