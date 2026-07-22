@@ -26,15 +26,15 @@ const LABELS: Quadrant[][] = [
 ];
 
 const COLOR: Record<Quadrant, string> = {
-  Star: "bg-rag-green/15 text-rag-green border-rag-green/30",
-  "High Performer": "bg-rag-green/10 text-rag-green border-rag-green/30",
-  "Key Player": "bg-accent/15 text-accent border-accent/30",
-  "Core Player": "bg-secondary text-foreground border-border",
-  "Solid Performer": "bg-secondary text-foreground border-border",
-  "Question Mark": "bg-rag-amber/15 text-[oklch(0.45_0.15_60)] border-rag-amber/30",
-  Inconsistent: "bg-rag-amber/10 text-[oklch(0.45_0.15_60)] border-rag-amber/30",
-  Iceberg: "bg-muted text-muted-foreground border-border",
-  Risk: "bg-rag-red/10 text-rag-red border-rag-red/30",
+  Star: "bg-rag-green/30 text-rag-green border-2 border-rag-green/60",
+  "High Performer": "bg-rag-green/25 text-rag-green border-2 border-rag-green/55",
+  "Key Player": "bg-accent/25 text-accent border-2 border-accent/55",
+  "Core Player": "bg-slate-blue/15 text-navy border-2 border-slate-blue/40",
+  "Solid Performer": "bg-slate-blue/20 text-navy border-2 border-slate-blue/45",
+  "Question Mark": "bg-rag-amber/30 text-[oklch(0.40_0.16_60)] border-2 border-rag-amber/65",
+  Inconsistent: "bg-rag-amber/25 text-[oklch(0.40_0.16_60)] border-2 border-rag-amber/60",
+  Iceberg: "bg-muted text-muted-foreground border-2 border-border",
+  Risk: "bg-rag-red/25 text-rag-red border-2 border-rag-red/60",
 };
 
 function TalentMatrix() {
