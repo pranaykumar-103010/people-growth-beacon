@@ -143,6 +143,77 @@ Generate department-level HRBP insight:
     return output;
   });
 
+const ScopedSchema = z.object({
+  summary: z.string().min(20).max(500),
+  risk_distribution: z.object({
+    high_pct: z.number().min(0).max(100),
+    medium_pct: z.number().min(0).max(100),
+    low_pct: z.number().min(0).max(100),
+  }),
+  key_risk_drivers: z.array(z.string().min(3).max(200)).min(2).max(3),
+  recommended_actions: z.array(z.string().min(3).max(200)).min(2).max(2),
+});
+
+export const generateScopedInsight = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    department: z.string().min(1),
+    sub_vertical: z.string().optional().nullable(),
+    manager_email: z.string().optional().nullable(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { supabase } = context as unknown as { supabase: any };
+    let q = supabase.from("employees")
+      .select("name,job_title,level,sub_vertical,manager_email,h2_rating,potential_rating,attrition_risk,talent_segment,nine_box_quadrant,flight_risk_drivers")
+      .eq("department", data.department).eq("active", true);
+    if (data.sub_vertical) q = q.eq("sub_vertical", data.sub_vertical);
+    if (data.manager_email) q = q.eq("manager_email", data.manager_email);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) throw new Error("No visible employees in this scope");
+
+    const total = rows.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const risks = rows.map((r: any) => Number(r.attrition_risk ?? 0));
+    const high = risks.filter((n: number) => n >= 65).length;
+    const med = risks.filter((n: number) => n >= 40 && n < 65).length;
+    const low = total - high - med;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const avg = (k: string) => (rows.reduce((s: number, r: any) => s + Number(r[k] ?? 0), 0) / total).toFixed(2);
+    const driverCounts: Record<string, number> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rows.forEach((r: any) => (r.flight_risk_drivers ?? []).forEach((d: string) => { driverCounts[d] = (driverCounts[d] || 0) + 1; }));
+
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI is not configured");
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const { generateText, Output } = await import("ai");
+    const gateway = createLovableAiGatewayProvider(key);
+
+    const scopeLabel = [data.department, data.sub_vertical, data.manager_email].filter(Boolean).join(" › ");
+
+    const { output } = await generateText({
+      model: gateway("google/gemini-3-flash-preview"),
+      output: Output.object({ schema: ScopedSchema }),
+      system: "You are a senior HRBP advisor at FieldAssist. Be concrete, business-focused, and actionable. Never expose confidential 1:1 notes.",
+      prompt: `Scope: ${scopeLabel}
+Headcount (visible): ${total}
+Avg H2 performance: ${avg("h2_rating")}  ·  Avg potential: ${avg("potential_rating")}
+Avg attrition risk: ${avg("attrition_risk")}/100
+Risk distribution — High(≥65): ${high} · Medium(40-64): ${med} · Low(<40): ${low}
+Top flight-risk drivers observed: ${JSON.stringify(driverCounts)}
+
+Return:
+- "summary": 2-3 sentence scope-specific executive insight.
+- "risk_distribution": exact percentages (0-100) that sum to ~100 — high_pct=${Math.round(high/total*100)}, medium_pct=${Math.round(med/total*100)}, low_pct=${Math.round(low/total*100)}.
+- "key_risk_drivers": 2-3 bullets explaining WHY this specific scope is at risk (market pay divergence, promotion stagnation, calibration drops, manager dependency, etc.).
+- "recommended_actions": exactly 2 targeted next steps for HRBP/Manager in this scope.`,
+    });
+
+    return { ...output, headcount: total };
+  });
+
 export const listDepartmentInsights = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
