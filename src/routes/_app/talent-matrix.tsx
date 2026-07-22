@@ -26,15 +26,15 @@ const LABELS: Quadrant[][] = [
 ];
 
 const COLOR: Record<Quadrant, string> = {
-  Star: "bg-rag-green/15 text-rag-green border-rag-green/30",
-  "High Performer": "bg-rag-green/10 text-rag-green border-rag-green/30",
-  "Key Player": "bg-accent/15 text-accent border-accent/30",
-  "Core Player": "bg-secondary text-foreground border-border",
-  "Solid Performer": "bg-secondary text-foreground border-border",
-  "Question Mark": "bg-rag-amber/15 text-[oklch(0.45_0.15_60)] border-rag-amber/30",
-  Inconsistent: "bg-rag-amber/10 text-[oklch(0.45_0.15_60)] border-rag-amber/30",
-  Iceberg: "bg-muted text-muted-foreground border-border",
-  Risk: "bg-rag-red/10 text-rag-red border-rag-red/30",
+  Star: "bg-rag-green/30 text-rag-green border-2 border-rag-green/60",
+  "High Performer": "bg-rag-green/25 text-rag-green border-2 border-rag-green/55",
+  "Key Player": "bg-accent/25 text-accent border-2 border-accent/55",
+  "Core Player": "bg-slate-blue/15 text-navy border-2 border-slate-blue/40",
+  "Solid Performer": "bg-slate-blue/20 text-navy border-2 border-slate-blue/45",
+  "Question Mark": "bg-rag-amber/30 text-[oklch(0.40_0.16_60)] border-2 border-rag-amber/65",
+  Inconsistent: "bg-rag-amber/25 text-[oklch(0.40_0.16_60)] border-2 border-rag-amber/60",
+  Iceberg: "bg-muted text-muted-foreground border-2 border-border",
+  Risk: "bg-rag-red/25 text-rag-red border-2 border-rag-red/60",
 };
 
 function TalentMatrix() {
@@ -71,7 +71,7 @@ function TalentMatrix() {
   };
 
   return (
-    <div className="px-5 md:px-8 pt-5 md:pt-6 pb-2 max-w-7xl mx-auto h-[calc(100vh-3.5rem)] md:h-screen flex flex-col overflow-hidden">
+    <div className="px-5 md:px-8 pt-5 md:pt-6 pb-4 max-w-[1600px] mx-auto min-h-[calc(100vh-3.5rem)] flex flex-col">
       <header className="mb-4 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
@@ -83,13 +83,13 @@ function TalentMatrix() {
         </Button>
       </header>
 
-      <div className="flex gap-2 flex-1 min-h-0">
+      <div className="flex gap-3 flex-1 min-h-0">
         <div className="hidden md:flex flex-col items-center justify-between py-2">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+          <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
             Potential →
           </span>
         </div>
-        <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-2 min-h-0">
+        <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-3 auto-rows-fr min-h-[720px]">
           {LABELS.flat().map((label) => {
             const list = byQuadrant[label] ?? [];
             const color = COLOR[label];
@@ -99,19 +99,19 @@ function TalentMatrix() {
                 onDragOver={(ev) => { if (isAdmin) { ev.preventDefault(); setDragOver(label); } }}
                 onDragLeave={() => setDragOver((cur) => (cur === label ? null : cur))}
                 onDrop={(ev) => { ev.preventDefault(); const id = ev.dataTransfer.getData("text/plain"); if (id) onDrop(label, id); }}
-                className={`rounded-xl border ${color} flex flex-col min-h-0 overflow-hidden transition ${dragOver === label ? "ring-2 ring-accent" : ""}`}
+                className={`rounded-xl ${color} flex flex-col min-h-[220px] overflow-hidden transition shadow-sm ${dragOver === label ? "ring-4 ring-accent ring-offset-2" : ""}`}
               >
                 <button
                   onClick={() => setActiveQuad(label)}
-                  className="flex items-center justify-between px-2.5 py-1.5 border-b border-current/20 hover:bg-black/5 transition flex-shrink-0"
+                  className="flex items-center justify-between px-3.5 py-2.5 border-b-2 border-current/25 hover:bg-black/5 transition flex-shrink-0"
                 >
-                  <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-wider opacity-80 leading-tight truncate">{label}</div>
-                    <div className="text-[10px] opacity-60 leading-tight">{list.length} {list.length === 1 ? "person" : "people"}</div>
+                  <div className="min-w-0 text-left">
+                    <div className="text-xs uppercase tracking-wider font-bold leading-tight truncate">{label}</div>
+                    <div className="text-[11px] opacity-75 leading-tight mt-0.5">{list.length} {list.length === 1 ? "person" : "people"}</div>
                   </div>
-                  <span className="text-[10px] underline opacity-70 ml-2 flex-shrink-0">View all →</span>
+                  <span className="text-[11px] underline opacity-80 ml-2 flex-shrink-0 font-medium">View all →</span>
                 </button>
-                <div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1">
+                <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5">
                   {list.map((e) => (
                     <button
                       key={e.emp_id}
@@ -119,19 +119,19 @@ function TalentMatrix() {
                       draggable={isAdmin}
                       onDragStart={(ev) => { ev.dataTransfer.setData("text/plain", e.emp_id); ev.dataTransfer.effectAllowed = "move"; }}
                       title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}${e.nine_box_override ? " · manual override" : ""}`}
-                      className={`w-full text-left px-2 py-1 rounded bg-white/70 hover:bg-white border border-black/5 transition text-[11px] leading-tight ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-md bg-white/90 hover:bg-white border border-black/10 hover:border-black/20 transition text-[12px] leading-tight shadow-sm ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
                     >
-                      <div className="font-medium text-foreground truncate flex items-center gap-1">
+                      <div className="font-semibold text-foreground truncate flex items-center gap-1 text-[13px]">
                         {e.name}
-                        {e.nine_box_override && <span className="text-[9px] opacity-60">•</span>}
+                        {e.nine_box_override && <span className="text-[10px] opacity-70">•</span>}
                       </div>
-                      <div className="text-muted-foreground truncate">
+                      <div className="text-muted-foreground truncate text-[11px] mt-0.5">
                         {(e.sub_vertical ?? "—")} · {e.manager_email.split("@")[0]}
                       </div>
                     </button>
                   ))}
                   {list.length === 0 && (
-                    <div className="text-[10px] opacity-50 px-2 py-1">empty</div>
+                    <div className="text-[11px] opacity-60 px-2 py-1 italic">empty</div>
                   )}
                 </div>
               </div>
@@ -139,11 +139,12 @@ function TalentMatrix() {
           })}
         </div>
       </div>
-      <div className="flex items-center justify-between mt-2 flex-shrink-0 md:pl-6">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Low</span>
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance →</span>
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">High</span>
+      <div className="flex items-center justify-between mt-3 flex-shrink-0 md:pl-6">
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Low</span>
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Performance →</span>
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">High</span>
       </div>
+
 
       {/* Quadrant list */}
       <Sheet open={!!activeQuad} onOpenChange={(o) => !o && setActiveQuad(null)}>
