@@ -105,11 +105,13 @@ export type Database = {
           ai_readiness_band: string | null
           ai_readiness_score: number | null
           ai_recommended_actions: string[] | null
+          annual_rating: number
           attrition_risk: number
           created_at: string
           department: string
           email: string | null
           emp_id: string
+          exit_date: string | null
           flight_risk_drivers: string[] | null
           function_head_email: string | null
           future_career_path: string | null
@@ -127,6 +129,9 @@ export type Database = {
           nine_box_override: string | null
           nine_box_quadrant: string
           potential_rating: number
+          previous_level: string | null
+          promoted_level: string | null
+          promotion_effective_date: string | null
           rag_status: string
           retention_risk_band: string | null
           rollup_manager_email: string | null
@@ -141,11 +146,13 @@ export type Database = {
           ai_readiness_band?: string | null
           ai_readiness_score?: number | null
           ai_recommended_actions?: string[] | null
+          annual_rating?: number
           attrition_risk?: number
           created_at?: string
           department?: string
           email?: string | null
           emp_id: string
+          exit_date?: string | null
           flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
@@ -163,6 +170,9 @@ export type Database = {
           nine_box_override?: string | null
           nine_box_quadrant?: string
           potential_rating?: number
+          previous_level?: string | null
+          promoted_level?: string | null
+          promotion_effective_date?: string | null
           rag_status?: string
           retention_risk_band?: string | null
           rollup_manager_email?: string | null
@@ -177,11 +187,13 @@ export type Database = {
           ai_readiness_band?: string | null
           ai_readiness_score?: number | null
           ai_recommended_actions?: string[] | null
+          annual_rating?: number
           attrition_risk?: number
           created_at?: string
           department?: string
           email?: string | null
           emp_id?: string
+          exit_date?: string | null
           flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
@@ -199,6 +211,9 @@ export type Database = {
           nine_box_override?: string | null
           nine_box_quadrant?: string
           potential_rating?: number
+          previous_level?: string | null
+          promoted_level?: string | null
+          promotion_effective_date?: string | null
           rag_status?: string
           retention_risk_band?: string | null
           rollup_manager_email?: string | null
