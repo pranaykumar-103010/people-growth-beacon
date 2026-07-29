@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Target, Crown, UserPlus, Trophy } from "lucide-react";
+import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Crown, UserPlus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
