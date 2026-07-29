@@ -8,11 +8,10 @@ import { AiCopilotLauncher } from "@/components/AiCopilot";
 
 const BASE_NAV = [
   { to: "/", label: "Command Center", icon: LayoutDashboard },
-  { to: "/talent-matrix", label: "9-Box Matrix", icon: Grid3x3 },
+  { to: "/talent-matrix", label: "Talent Segments", icon: Grid3x3 },
+  { to: "/leadership-pipeline", label: "Leadership Pipeline", icon: Crown },
   { to: "/high-performers", label: "High Performers", icon: Trophy },
   { to: "/new-joiners", label: "New Joiners", icon: UserPlus },
-  { to: "/talent-segments", label: "Talent Segments", icon: Target },
-  { to: "/leadership-pipeline", label: "Leadership Pipeline", icon: Crown },
   { to: "/attrition", label: "Attrition Radar", icon: AlertTriangle },
   { to: "/risk-methodology", label: "Risk Methodology", icon: Calculator },
 ] as const;
