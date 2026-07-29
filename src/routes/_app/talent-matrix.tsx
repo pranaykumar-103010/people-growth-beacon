@@ -4,12 +4,13 @@ import { useEmployees } from "@/hooks/use-employees";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Sparkles, RefreshCw } from "lucide-react";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
 import type { Employee, Quadrant } from "@/lib/types";
-import { QUADRANT_DESC } from "@/lib/types";
+import { QUADRANT_DESC, tenureDays } from "@/lib/types";
 import { moveEmployeeQuadrant } from "@/lib/employees.functions";
+import { generateIdp } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -37,14 +38,38 @@ const COLOR: Record<Quadrant, string> = {
   Risk: "bg-rag-red/25 text-rag-red border-2 border-rag-red/60",
 };
 
+const SUMMARY_TILES: Quadrant[] = ["Star", "Key Player", "High Performer", "Core Player", "Question Mark", "Risk"];
+
+type Idp = {
+  placement_reasoning: string[];
+  development_priority: "Critical" | "High" | "Medium" | "Low";
+  quick_wins_30d: string[];
+  capability_60d: string[];
+  outcomes_90d: string[];
+  manager_actions: string[];
+  hrbp_actions: string[];
+  executive_summary: string;
+  emp_id: string;
+};
+
+const PRIORITY_CLASS: Record<string, string> = {
+  Critical: "bg-rag-red/15 text-rag-red border-rag-red/40",
+  High: "bg-rag-amber/20 text-[oklch(0.42_0.16_60)] border-rag-amber/40",
+  Medium: "bg-accent/15 text-accent border-accent/40",
+  Low: "bg-rag-green/15 text-rag-green border-rag-green/40",
+};
+
 function TalentMatrix() {
   const { data: employees = [] } = useEmployees();
   const { role, isAdmin } = useAuth();
   const qc = useQueryClient();
   const move = useServerFn(moveEmployeeQuadrant);
+  const runIdp = useServerFn(generateIdp);
   const [activeQuad, setActiveQuad] = useState<Quadrant | null>(null);
   const [picked, setPicked] = useState<Employee | null>(null);
   const [dragOver, setDragOver] = useState<Quadrant | null>(null);
+  const [idp, setIdp] = useState<Idp | null>(null);
+  const [idpBusy, setIdpBusy] = useState(false);
 
   const byQuadrant = useMemo(() => {
     const m = {} as Record<Quadrant, Employee[]>;
@@ -70,83 +95,93 @@ function TalentMatrix() {
     }
   };
 
+  const openEmployee = (e: Employee) => { setPicked(e); setIdp(null); };
+
+  const buildIdp = async (e: Employee) => {
+    setIdpBusy(true);
+    try {
+      const out = (await runIdp({ data: { emp_id: e.emp_id } })) as Idp;
+      setIdp(out);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not generate the development plan");
+    } finally { setIdpBusy(false); }
+  };
+
   return (
-    <div className="px-5 md:px-8 pt-5 md:pt-6 pb-4 max-w-[1600px] mx-auto min-h-[calc(100vh-3.5rem)] flex flex-col">
-      <header className="mb-4 flex-shrink-0 flex items-start justify-between gap-3">
+    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
+      <header className="mb-3 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Matrix</div>
-          <h1 className="font-display text-2xl md:text-3xl">9-Box · Performance × Potential</h1>
-          <p className="text-muted-foreground text-xs mt-1">Click a tile to see everyone · click a person for their full profile{isAdmin ? " · drag anyone into another quadrant to override" : ""}.</p>
+          <div className="text-[11px] uppercase tracking-widest text-accent font-medium">Performance × Potential</div>
+          <h1 className="font-display text-2xl md:text-3xl leading-tight">Talent Segments</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Click a tile or a person for their full profile and AI development plan{isAdmin ? " · drag anyone into another segment to override" : ""}.
+          </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5" disabled={employees.length === 0} onClick={() => exportEmployeesXlsx(employees, `talent-matrix-${role ?? "team"}`)}>
+        <Button size="sm" variant="outline" className="gap-1.5" disabled={employees.length === 0} onClick={() => exportEmployeesXlsx(employees, `talent-segments-${role ?? "team"}`)}>
           <Download className="size-3.5" /> Export Team
         </Button>
       </header>
 
+      <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
+        {SUMMARY_TILES.map((q) => (
+          <button key={q} onClick={() => setActiveQuad(q)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition hover:shadow-sm ${COLOR[q]}`}>
+            {q}<span className="font-display text-sm">{byQuadrant[q]?.length ?? 0}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-3 flex-1 min-h-0">
         <div className="hidden md:flex flex-col items-center justify-between py-2">
-          <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+          <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
             Potential →
           </span>
         </div>
-        <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-3 auto-rows-fr min-h-[720px]">
+        <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-2.5 min-h-0">
           {LABELS.flat().map((label) => {
             const list = byQuadrant[label] ?? [];
-            const color = COLOR[label];
             return (
               <div
                 key={label}
                 onDragOver={(ev) => { if (isAdmin) { ev.preventDefault(); setDragOver(label); } }}
                 onDragLeave={() => setDragOver((cur) => (cur === label ? null : cur))}
                 onDrop={(ev) => { ev.preventDefault(); const id = ev.dataTransfer.getData("text/plain"); if (id) onDrop(label, id); }}
-                className={`rounded-xl ${color} flex flex-col min-h-[220px] overflow-hidden transition shadow-sm ${dragOver === label ? "ring-4 ring-accent ring-offset-2" : ""}`}
+                className={`rounded-xl ${COLOR[label]} flex flex-col min-h-0 overflow-hidden transition shadow-sm ${dragOver === label ? "ring-4 ring-accent ring-offset-2" : ""}`}
               >
                 <button
                   onClick={() => setActiveQuad(label)}
-                  className="flex items-center justify-between px-3.5 py-2.5 border-b-2 border-current/25 hover:bg-black/5 transition flex-shrink-0"
+                  className="flex items-center justify-between px-3 py-2 border-b-2 border-current/25 hover:bg-black/5 transition flex-shrink-0"
                 >
                   <div className="min-w-0 text-left">
-                    <div className="text-xs uppercase tracking-wider font-bold leading-tight truncate">{label}</div>
-                    <div className="text-[11px] opacity-75 leading-tight mt-0.5">{list.length} {list.length === 1 ? "person" : "people"}</div>
+                    <div className="text-[12px] uppercase tracking-wider font-bold leading-tight truncate">{label}</div>
+                    <div className="text-[10px] opacity-75 leading-tight">{list.length} {list.length === 1 ? "person" : "people"}</div>
                   </div>
-                  <span className="text-[11px] underline opacity-80 ml-2 flex-shrink-0 font-medium">View all →</span>
+                  <span className="text-[10px] underline opacity-80 ml-2 flex-shrink-0 font-medium">View all →</span>
                 </button>
-                <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5">
+                <div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1">
                   {list.map((e) => (
                     <button
                       key={e.emp_id}
-                      onClick={() => setPicked(e)}
+                      onClick={() => openEmployee(e)}
                       draggable={isAdmin}
                       onDragStart={(ev) => { ev.dataTransfer.setData("text/plain", e.emp_id); ev.dataTransfer.effectAllowed = "move"; }}
                       title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}${e.nine_box_override ? " · manual override" : ""}`}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-md bg-white/90 hover:bg-white border border-black/10 hover:border-black/20 transition text-[12px] leading-tight shadow-sm ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
+                      className="w-full text-left px-2 py-1 rounded-md bg-white/90 hover:bg-white border border-black/10 hover:border-black/20 transition"
                     >
-                      <div className="font-semibold text-foreground truncate flex items-center gap-1 text-[13px]">
-                        {e.name}
-                        {e.nine_box_override && <span className="text-[10px] opacity-70">•</span>}
-                      </div>
-                      <div className="text-muted-foreground truncate text-[11px] mt-0.5">
-                        {(e.sub_vertical ?? "—")} · {e.manager_email.split("@")[0]}
-                      </div>
+                      <div className="text-[12.5px] font-semibold text-navy leading-tight truncate">{e.name}</div>
+                      <div className="text-[10.5px] text-muted-foreground leading-tight truncate">{e.sub_vertical ?? e.job_title}</div>
                     </button>
                   ))}
-                  {list.length === 0 && (
-                    <div className="text-[11px] opacity-60 px-2 py-1 italic">empty</div>
-                  )}
+                  {list.length === 0 && <div className="text-[11px] opacity-60 px-1 py-1">—</div>}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div className="flex items-center justify-between mt-3 flex-shrink-0 md:pl-6">
-        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Low</span>
-        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Performance →</span>
-        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">High</span>
-      </div>
+      <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold text-center pt-2 flex-shrink-0">Performance →</div>
 
-
-      {/* Quadrant list */}
+      {/* Quadrant roster */}
       <Sheet open={!!activeQuad} onOpenChange={(o) => !o && setActiveQuad(null)}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto p-6">
           <SheetHeader className="mb-4">
@@ -156,7 +191,7 @@ function TalentMatrix() {
           <ul className="space-y-2">
             {activeQuad && byQuadrant[activeQuad]?.map((e) => (
               <li key={e.emp_id}>
-                <button onClick={() => { setActiveQuad(null); setPicked(e); }} className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-secondary/50 transition text-left">
+                <button onClick={() => { setActiveQuad(null); openEmployee(e); }} className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-secondary/50 transition text-left">
                   <div className="size-9 rounded-full bg-accent/10 text-accent grid place-items-center text-sm font-medium">
                     {e.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
                   </div>
@@ -169,26 +204,59 @@ function TalentMatrix() {
               </li>
             ))}
             {activeQuad && (byQuadrant[activeQuad]?.length ?? 0) === 0 && (
-              <li className="text-sm text-muted-foreground text-center py-8">No one in this quadrant.</li>
+              <li className="text-sm text-muted-foreground text-center py-8">No one in this segment.</li>
             )}
           </ul>
         </SheetContent>
       </Sheet>
 
-      {/* Employee detail */}
-      <Sheet open={!!picked} onOpenChange={(o) => !o && setPicked(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-6">
+      {/* Employee detail + AI IDP */}
+      <Sheet open={!!picked} onOpenChange={(o) => { if (!o) { setPicked(null); setIdp(null); } }}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-6">
           {picked && (
             <>
               <SheetHeader className="mb-4">
                 <SheetTitle className="font-display flex items-center gap-2">{picked.name}<RagBadge score={picked.attrition_risk} /></SheetTitle>
-                <SheetDescription>{picked.job_title} · {picked.sub_vertical}</SheetDescription>
+                <SheetDescription>{picked.job_title} · {picked.sub_vertical} · {Math.round(tenureDays(picked.joining_date) / 30.44)} months tenure</SheetDescription>
               </SheetHeader>
               <div className="grid grid-cols-3 gap-3 text-xs mb-4">
-                <div><div className="text-muted-foreground">H2 Rating</div><div className="font-medium text-sm">{picked.h2_rating}</div></div>
+                <div><div className="text-muted-foreground">Annual Rating</div><div className="font-medium text-sm">{picked.annual_rating}</div></div>
                 <div><div className="text-muted-foreground">Potential</div><div className="font-medium text-sm">{picked.potential_rating}</div></div>
-                <div><div className="text-muted-foreground">9-Box</div><div className="font-medium text-sm">{picked.nine_box_quadrant}</div></div>
+                <div><div className="text-muted-foreground">Segment</div><div className="font-medium text-sm">{picked.nine_box_quadrant}</div></div>
               </div>
+
+              <div className="rounded-lg border bg-card p-4 mb-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="size-3.5" /> AI Individual Development Plan
+                  </div>
+                  <Button size="sm" variant={idp ? "ghost" : "default"} disabled={idpBusy} onClick={() => buildIdp(picked)} className="h-7 gap-1.5 text-xs">
+                    <RefreshCw className={`size-3 ${idpBusy ? "animate-spin" : ""}`} /> {idp ? "Regenerate" : "Generate IDP"}
+                  </Button>
+                </div>
+
+                {idpBusy && !idp && <p className="text-sm text-muted-foreground">Building a plan from ratings, risk, tenure and manager feedback…</p>}
+                {!idpBusy && !idp && <p className="text-sm text-muted-foreground">Generate a personalised 30/60/90-day plan for {picked.name.split(" ")[0]}.</p>}
+
+                {idp && (
+                  <div className="space-y-4">
+                    <span className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full border ${PRIORITY_CLASS[idp.development_priority]}`}>
+                      {idp.development_priority} development priority
+                    </span>
+                    <IdpList title="Why they sit here" items={idp.placement_reasoning} />
+                    <IdpList title="30-Day Quick Wins" items={idp.quick_wins_30d} numbered />
+                    <IdpList title="60-Day Capability Building" items={idp.capability_60d} numbered />
+                    <IdpList title="90-Day Measurable Outcomes" items={idp.outcomes_90d} numbered />
+                    <IdpList title="Manager Action Plan" items={idp.manager_actions} />
+                    <IdpList title="HRBP Lightweight Actions" items={idp.hrbp_actions} />
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Executive Summary</div>
+                      <p className="text-sm">{idp.executive_summary}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-3 text-sm">
                 <Block label="Manager" value={picked.manager_email} />
                 <Block label="Roll-up Manager" value={picked.rollup_manager_email ?? "—"} />
@@ -201,6 +269,24 @@ function TalentMatrix() {
           )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function IdpList({ title, items, numbered }: { title: string; items: string[]; numbered?: boolean }) {
+  return (
+    <div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5">{title}</div>
+      <ul className="space-y-1.5">
+        {items.map((t, i) => (
+          <li key={i} className="text-sm flex items-start gap-2">
+            <span className="size-5 rounded-full bg-accent/10 text-accent grid place-items-center text-[10px] font-medium flex-shrink-0 mt-0.5">
+              {numbered ? i + 1 : "•"}
+            </span>
+            <span>{t}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
