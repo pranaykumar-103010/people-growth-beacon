@@ -13,7 +13,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as AppTalentSegmentsRouteImport } from './routes/_app/talent-segments'
 import { Route as AppTalentMatrixRouteImport } from './routes/_app/talent-matrix'
 import { Route as AppRiskMethodologyRouteImport } from './routes/_app/risk-methodology'
 import { Route as AppNewJoinersRouteImport } from './routes/_app/new-joiners'
@@ -40,11 +39,6 @@ const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AppTalentSegmentsRoute = AppTalentSegmentsRouteImport.update({
-  id: '/talent-segments',
-  path: '/talent-segments',
-  getParentRoute: () => AppRoute,
 } as any)
 const AppTalentMatrixRoute = AppTalentMatrixRouteImport.update({
   id: '/talent-matrix',
@@ -92,7 +86,6 @@ export interface FileRoutesByFullPath {
   '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
-  '/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
@@ -104,7 +97,6 @@ export interface FileRoutesByTo {
   '/new-joiners': typeof AppNewJoinersRoute
   '/risk-methodology': typeof AppRiskMethodologyRoute
   '/talent-matrix': typeof AppTalentMatrixRoute
-  '/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AppIndexRoute
 }
@@ -119,7 +111,6 @@ export interface FileRoutesById {
   '/_app/new-joiners': typeof AppNewJoinersRoute
   '/_app/risk-methodology': typeof AppRiskMethodologyRoute
   '/_app/talent-matrix': typeof AppTalentMatrixRoute
-  '/_app/talent-segments': typeof AppTalentSegmentsRoute
   '/api/chat': typeof ApiChatRoute
   '/_app/': typeof AppIndexRoute
 }
@@ -135,7 +126,6 @@ export interface FileRouteTypes {
     | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
-    | '/talent-segments'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -147,7 +137,6 @@ export interface FileRouteTypes {
     | '/new-joiners'
     | '/risk-methodology'
     | '/talent-matrix'
-    | '/talent-segments'
     | '/api/chat'
     | '/'
   id:
@@ -161,7 +150,6 @@ export interface FileRouteTypes {
     | '/_app/new-joiners'
     | '/_app/risk-methodology'
     | '/_app/talent-matrix'
-    | '/_app/talent-segments'
     | '/api/chat'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -201,13 +189,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_app/talent-segments': {
-      id: '/_app/talent-segments'
-      path: '/talent-segments'
-      fullPath: '/talent-segments'
-      preLoaderRoute: typeof AppTalentSegmentsRouteImport
-      parentRoute: typeof AppRoute
     }
     '/_app/talent-matrix': {
       id: '/_app/talent-matrix'
@@ -269,7 +250,6 @@ interface AppRouteChildren {
   AppNewJoinersRoute: typeof AppNewJoinersRoute
   AppRiskMethodologyRoute: typeof AppRiskMethodologyRoute
   AppTalentMatrixRoute: typeof AppTalentMatrixRoute
-  AppTalentSegmentsRoute: typeof AppTalentSegmentsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -281,7 +261,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppNewJoinersRoute: AppNewJoinersRoute,
   AppRiskMethodologyRoute: AppRiskMethodologyRoute,
   AppTalentMatrixRoute: AppTalentMatrixRoute,
-  AppTalentSegmentsRoute: AppTalentSegmentsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

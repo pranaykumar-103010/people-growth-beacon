@@ -238,7 +238,7 @@ function AttritionRadar() {
                 <RagBadge score={e.attrition_risk} />
               </div>
               <div className="grid grid-cols-4 gap-3 text-xs">
-                <div><div className="text-muted-foreground">H2 Rating</div><div className="font-medium text-sm">{e.h2_rating}/5</div></div>
+                <div><div className="text-muted-foreground">Annual Rating</div><div className="font-medium text-sm">{e.annual_rating}/5</div></div>
                 <div><div className="text-muted-foreground">Potential</div><div className="font-medium text-sm">{e.potential_rating}/5</div></div>
                 <div><div className="text-muted-foreground">9-Box</div><div className="font-medium text-sm">{e.nine_box_quadrant}</div></div>
                 <div><div className="text-muted-foreground">RAG</div><div className="font-medium text-sm capitalize">{e.rag_status}</div></div>

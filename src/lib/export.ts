@@ -13,7 +13,7 @@ export function exportEmployeesXlsx(employees: Employee[], filenameStem = "talen
     Manager: e.manager_email,
     "Roll-up Manager": e.rollup_manager_email ?? "",
     "Function Head": e.function_head_email ?? "",
-    "H2 Rating": e.h2_rating,
+    "Annual Rating": e.annual_rating,
     "Potential Rating": e.potential_rating,
     "9-Box": e.nine_box_quadrant,
     "Attrition Risk": e.attrition_risk,
