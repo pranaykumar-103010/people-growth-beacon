@@ -24,7 +24,7 @@ export const Route = (createFileRoute("/api/chat") as any)({
         });
 
         const { data: emps } = await supabase.from("employees")
-          .select("emp_id,name,job_title,level,department,sub_vertical,h2_rating,potential_rating,attrition_risk,retention_risk_band,talent_segment,leadership_readiness,ai_readiness_band,flight_risk_drivers,manager_email,hrbp_insights")
+          .select("emp_id,name,job_title,level,department,sub_vertical,annual_rating,potential_rating,attrition_risk,retention_risk_band,talent_segment,leadership_readiness,ai_readiness_band,flight_risk_drivers,manager_email,hrbp_insights")
           .eq("active", true).limit(200);
 
         const apiKey = process.env.LOVABLE_API_KEY;
@@ -32,7 +32,7 @@ export const Route = (createFileRoute("/api/chat") as any)({
 
         const compact = (emps ?? []).map((e) => ({
           id: e.emp_id, name: e.name, role: e.job_title, level: e.level,
-          dept: e.department, sv: e.sub_vertical, perf: e.h2_rating, pot: e.potential_rating,
+          dept: e.department, sv: e.sub_vertical, perf: e.annual_rating, pot: e.potential_rating,
           risk: e.attrition_risk, band: e.retention_risk_band, seg: e.talent_segment,
           leader: e.leadership_readiness, ai: e.ai_readiness_band,
           drivers: e.flight_risk_drivers, mgr: e.manager_email,

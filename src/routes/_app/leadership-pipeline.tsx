@@ -18,8 +18,8 @@ const BUCKETS = [
 ] as const;
 
 function reason(e: Employee, k: string): string {
-  if (k === "ready_now") return `Perf ${e.h2_rating} · Pot ${e.potential_rating} · proven tenure`;
-  if (k === "ready_1y") return `Perf ${e.h2_rating} · Pot ${e.potential_rating} · stretch this year`;
+  if (k === "ready_now") return `Perf ${e.annual_rating} · Pot ${e.potential_rating} · proven tenure`;
+  if (k === "ready_1y") return `Perf ${e.annual_rating} · Pot ${e.potential_rating} · stretch this year`;
   if (k === "ready_2y") return `Pot ${e.potential_rating} · needs broader experience`;
   return "Strong IC contribution path";
 }

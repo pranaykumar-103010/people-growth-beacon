@@ -8,6 +8,11 @@ export type Employee = {
   sub_vertical: string | null;
   joining_date: string;
   h2_rating: number;
+  annual_rating: number;
+  exit_date: string | null;
+  previous_level: string | null;
+  promoted_level: string | null;
+  promotion_effective_date: string | null;
   potential_rating: number;
   manager_email: string;
   rollup_manager_email: string | null;

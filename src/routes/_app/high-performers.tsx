@@ -17,7 +17,7 @@ function HighPerformers() {
   const { data: employees = [] } = useEmployees();
 
   const list = useMemo(
-    () => employees.filter((e) => Number(e.h2_rating) >= THRESHOLD).sort((a, b) => b.h2_rating - a.h2_rating),
+    () => employees.filter((e) => Number(e.annual_rating) >= THRESHOLD).sort((a, b) => b.annual_rating - a.annual_rating),
     [employees],
   );
 
@@ -27,10 +27,10 @@ function HighPerformers() {
         <div>
           <div className="text-xs uppercase tracking-widest text-accent font-medium">High Performers</div>
           <h1 className="font-display text-3xl md:text-4xl flex items-center gap-2">
-            <Trophy className="size-7 text-rag-green" /> Annual Rating ≥ {THRESHOLD}
+            <Trophy className="size-7 text-rag-green" /> High Performers
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {list.length} of {employees.length} in scope · sorted by H2 rating.
+            {list.length} of {employees.length} in scope · sorted by annual rating.
           </p>
         </div>
         <Button size="sm" variant="outline" className="gap-1.5" disabled={list.length === 0}
@@ -47,7 +47,7 @@ function HighPerformers() {
                 <th className="text-left px-4 py-2.5">Name</th>
                 <th className="text-left px-4 py-2.5 hidden md:table-cell">Role / Sub-vertical</th>
                 <th className="text-left px-4 py-2.5 hidden lg:table-cell">Manager</th>
-                <th className="text-center px-4 py-2.5">H2</th>
+                <th className="text-center px-4 py-2.5">Annual</th>
                 <th className="text-center px-4 py-2.5">Potential</th>
                 <th className="text-center px-4 py-2.5">Risk</th>
               </tr>
@@ -61,7 +61,7 @@ function HighPerformers() {
                   </td>
                   <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground">{e.job_title} · {e.sub_vertical}</td>
                   <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground text-xs">{e.manager_email}</td>
-                  <td className="px-4 py-2.5 text-center font-medium text-rag-green">{e.h2_rating}</td>
+                  <td className="px-4 py-2.5 text-center font-medium text-rag-green">{e.annual_rating}</td>
                   <td className="px-4 py-2.5 text-center">{e.potential_rating}</td>
                   <td className="px-4 py-2.5 text-center"><RagBadge score={e.attrition_risk} /></td>
                 </tr>

@@ -36,7 +36,7 @@ export const generateEmployeeInsight = createServerFn({ method: "POST" })
     const profile = `Name: ${emp.name}
 Role: ${emp.job_title} (${emp.level}) · ${emp.department} / ${emp.sub_vertical ?? "—"}
 Tenure: ${tenureYrs} years
-H2 Performance: ${emp.h2_rating}/5 · Potential: ${emp.potential_rating}/5
+Annual Rating: ${emp.annual_rating}/5 · Potential: ${emp.potential_rating}/5
 Current attrition risk: ${emp.attrition_risk}/100 · 9-Box: ${emp.nine_box_quadrant}
 Talent segment: ${emp.talent_segment ?? "—"} · Leadership readiness: ${emp.leadership_readiness ?? "—"}
 Existing HRBP notes: ${emp.hrbp_insights ?? "none"}`;
@@ -85,7 +85,7 @@ export const generateDepartmentInsight = createServerFn({ method: "POST" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { supabase } = context as unknown as { supabase: any };
     const { data: rows, error } = await supabase
-      .from("employees").select("name,job_title,level,sub_vertical,h2_rating,potential_rating,attrition_risk,talent_segment,nine_box_quadrant,hrbp_insights")
+      .from("employees").select("name,job_title,level,sub_vertical,annual_rating,potential_rating,attrition_risk,talent_segment,nine_box_quadrant,hrbp_insights")
       .eq("department", data.department).eq("active", true);
     if (error) throw new Error(error.message);
     if (!rows || rows.length === 0) throw new Error("No visible employees in that department");
@@ -114,7 +114,7 @@ export const generateDepartmentInsight = createServerFn({ method: "POST" })
       system: "You are a senior HRBP advisor. Be concrete, business-focused, and actionable.",
       prompt: `Department: ${data.department}
 Headcount (visible): ${total}
-Avg H2 performance: ${avg("h2_rating")}  ·  Avg potential: ${avg("potential_rating")}
+Avg annual rating: ${avg("annual_rating")}  ·  Avg potential: ${avg("potential_rating")}
 Avg attrition risk: ${avg("attrition_risk")}/100
 High-risk employees (>=65): ${highRisk}
 Stars (high perf + high pot): ${stars}
@@ -165,7 +165,7 @@ export const generateScopedInsight = createServerFn({ method: "POST" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { supabase } = context as unknown as { supabase: any };
     let q = supabase.from("employees")
-      .select("name,job_title,level,sub_vertical,manager_email,h2_rating,potential_rating,attrition_risk,talent_segment,nine_box_quadrant,flight_risk_drivers")
+      .select("name,job_title,level,sub_vertical,manager_email,annual_rating,potential_rating,attrition_risk,talent_segment,nine_box_quadrant,flight_risk_drivers")
       .eq("department", data.department).eq("active", true);
     if (data.sub_vertical) q = q.eq("sub_vertical", data.sub_vertical);
     if (data.manager_email) q = q.eq("manager_email", data.manager_email);
@@ -199,7 +199,7 @@ export const generateScopedInsight = createServerFn({ method: "POST" })
       system: "You are a senior HRBP advisor at FieldAssist. Be concrete, business-focused, and actionable. Never expose confidential 1:1 notes.",
       prompt: `Scope: ${scopeLabel}
 Headcount (visible): ${total}
-Avg H2 performance: ${avg("h2_rating")}  ·  Avg potential: ${avg("potential_rating")}
+Avg annual rating: ${avg("annual_rating")}  ·  Avg potential: ${avg("potential_rating")}
 Avg attrition risk: ${avg("attrition_risk")}/100
 Risk distribution — High(≥65): ${high} · Medium(40-64): ${med} · Low(<40): ${low}
 Top flight-risk drivers observed: ${JSON.stringify(driverCounts)}
