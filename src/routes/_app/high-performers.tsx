@@ -25,7 +25,7 @@ function HighPerformers() {
     <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-xs uppercase tracking-widest text-accent font-medium">High Performers</div>
+          <div className="text-xs uppercase tracking-widest text-accent font-medium">Talent Excellence</div>
           <h1 className="font-display text-3xl md:text-4xl flex items-center gap-2">
             <Trophy className="size-7 text-rag-green" /> High Performers
           </h1>
