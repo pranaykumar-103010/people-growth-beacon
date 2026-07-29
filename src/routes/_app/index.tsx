@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { Users, AlertTriangle, TrendingUp, Sparkles, Download, Crown, Search, RefreshCw, Brain, Target, Activity } from "lucide-react";
+import { Users, UserPlus, TrendingUp, LogOut, CalendarRange, Activity, Download, RefreshCw, Brain, AlertTriangle, BarChart3 } from "lucide-react";
 import { useEmployees } from "@/hooks/use-employees";
 import { useAuth } from "@/hooks/use-auth";
 import { RagBadge } from "@/components/Rag";
@@ -17,27 +17,31 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/")({ component: CommandCenter });
 
-function ExecKpi({ icon: Icon, label, value, sub, tone }: {
+const BASELINE = new Date("2026-04-01T00:00:00Z");
+const LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+
+function KpiCard({ icon: Icon, label, value, tone, onClick }: {
   icon: React.ComponentType<{ className?: string }>;
-  label: string; value: string | number; sub?: string;
+  label: string; value: string | number;
   tone?: "default" | "warning" | "good" | "danger";
+  onClick?: () => void;
 }) {
-  const ring = tone === "warning" ? "ring-rag-amber/30"
-    : tone === "good" ? "ring-rag-green/30"
-    : tone === "danger" ? "ring-rag-red/30" : "ring-border";
   const accent = tone === "warning" ? "text-rag-amber bg-rag-amber/10"
     : tone === "good" ? "text-rag-green bg-rag-green/10"
     : tone === "danger" ? "text-rag-red bg-rag-red/10" : "text-accent bg-accent/10";
   return (
-    <Card className={`shadow-sm ring-1 ${ring} border-0`}>
+    <Card
+      onClick={onClick}
+      className={`shadow-sm ring-1 ring-border border-0 ${onClick ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition" : ""}`}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-            <div className="mt-1.5 font-display text-2xl text-foreground">{value}</div>
-            {sub && <div className="mt-0.5 text-[11px] text-muted-foreground truncate">{sub}</div>}
+            <div className="mt-1.5 font-display text-3xl text-foreground">{value}</div>
+            {onClick && <div className="mt-0.5 text-[11px] text-accent">View details →</div>}
           </div>
-          <div className={`size-8 rounded-md grid place-items-center flex-shrink-0 ${accent}`}>
+          <div className={`size-9 rounded-md grid place-items-center flex-shrink-0 ${accent}`}>
             <Icon className="size-4" />
           </div>
         </div>
@@ -78,7 +82,7 @@ function EmployeeDetail({
             </SheetHeader>
 
             <div className="grid grid-cols-4 gap-2 text-xs mb-4">
-              <Stat label="Perf" value={employee.h2_rating} />
+              <Stat label="Annual" value={employee.annual_rating} />
               <Stat label="Potential" value={employee.potential_rating} />
               <Stat label="Risk" value={employee.attrition_risk} />
               <Stat label="AI Idx" value={employee.ai_readiness_score ?? "—"} />
@@ -161,52 +165,80 @@ function Block({ label, value }: { label: string; value: string }) {
   );
 }
 
+function nameFromEmail(email: string | null | undefined) {
+  if (!email) return "—";
+  return email.split("@")[0].split(/[._-]/).filter(Boolean)
+    .map((p) => p[0].toUpperCase() + p.slice(1)).join(" ");
+}
+
+function tenureLabel(days: number) {
+  const years = Math.floor(days / 365);
+  const months = Math.round((days % 365) / 30.44);
+  if (years <= 0) return `${months} mo`;
+  return `${years}y ${months}m`;
+}
+
 function CommandCenter() {
   const { email, role, isAdmin } = useAuth();
   const { data: employees = [], isLoading } = useEmployees();
   const qc = useQueryClient();
   const [picked, setPicked] = useState<Employee | null>(null);
+  const [modal, setModal] = useState<"joiners" | "promotions" | null>(null);
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [dept, setDept] = useState<string>("all");
-  const [riskBand, setRiskBand] = useState<string>("all");
+  const onRoll = useMemo(() => employees.filter((e) => e.active && !e.exit_date), [employees]);
 
-  const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
+  const newJoiners = useMemo(
+    () => onRoll.filter((e) => tenureDays(e.joining_date) <= 90).sort((a, b) => tenureDays(a.joining_date) - tenureDays(b.joining_date)),
+    [onRoll],
+  );
+  const promotions = useMemo(
+    () => employees.filter((e) => !!e.promotion_effective_date || !!e.promoted_level),
+    [employees],
+  );
+  const exits = useMemo(
+    () => employees.filter((e) => e.exit_date && new Date(e.exit_date) >= BASELINE),
+    [employees],
+  );
+  const baseline = useMemo(
+    () => employees.filter((e) => new Date(e.joining_date) < BASELINE && (!e.exit_date || new Date(e.exit_date) >= BASELINE)).length,
+    [employees],
+  );
+  const activeHeadcount = baseline - exits.length;
 
-  const filtered = useMemo(() => {
-    return employees.filter((e) => {
-      if (dept !== "all" && e.department !== dept) return false;
-      if (riskBand !== "all" && (e.retention_risk_band ?? "low") !== riskBand) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        if (!`${e.name} ${e.job_title} ${e.sub_vertical} ${e.email}`.toLowerCase().includes(s)) return false;
-      }
-      return true;
-    });
-  }, [employees, dept, riskBand, search]);
+  const byLevel = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const l of LEVELS) m[l] = 0;
+    for (const e of onRoll) {
+      const l = (e.level ?? "").toUpperCase().trim();
+      if (l in m) m[l] += 1; else m[l || "Unmapped"] = (m[l || "Unmapped"] ?? 0) + 1;
+    }
+    return m;
+  }, [onRoll]);
+  const maxLevel = Math.max(1, ...Object.values(byLevel));
 
-  // Executive summary metrics (over filtered)
-  const total = filtered.length;
-  const avgRisk = total ? Math.round(filtered.reduce((s, e) => s + e.attrition_risk, 0) / total) : 0;
-  const avgPerf = total ? (filtered.reduce((s, e) => s + e.h2_rating, 0) / total).toFixed(1) : "0.0";
-  const highRisk = filtered.filter((e) => e.attrition_risk >= 65).length;
-  const critical = filtered.filter((e) => (e.retention_risk_band === "critical") || e.talent_segment === "Critical Intervention" || e.talent_segment === "Flight Risk Stars").length;
-  const successionReady = filtered.filter((e) => e.leadership_readiness === "ready_now" || e.leadership_readiness === "ready_1y").length;
-  const aiReadyPct = total ? Math.round((filtered.filter((e) => e.ai_readiness_band === "AI Champion" || e.ai_readiness_band === "AI Ready").length / total) * 100) : 0;
-  const stars = filtered.filter((e) => e.nine_box_quadrant === "Star").length;
-  const newJoiners = filtered.filter((e) => tenureDays(e.joining_date) < 365).length;
-
-  // Top retention concern driver
-  const driverCount: Record<string, number> = {};
-  for (const e of filtered) {
-    if ((e.attrition_risk ?? 0) >= 50) for (const d of e.flight_risk_drivers ?? []) driverCount[d] = (driverCount[d] || 0) + 1;
-  }
-  const topDriver = Object.entries(driverCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+  const managerRows = useMemo(() => {
+    const byMgr = new Map<string, Employee[]>();
+    for (const e of onRoll) {
+      const k = (e.manager_email ?? "").toLowerCase();
+      if (!k) continue;
+      byMgr.set(k, [...(byMgr.get(k) ?? []), e]);
+    }
+    const descendants = (mgr: string, seen = new Set<string>()): Employee[] => {
+      if (seen.has(mgr)) return [];
+      seen.add(mgr);
+      const direct = byMgr.get(mgr) ?? [];
+      return direct.flatMap((d) => [d, ...descendants((d.email ?? "").toLowerCase(), seen)]);
+    };
+    return Array.from(byMgr.keys()).map((mgr) => {
+      const all = descendants(mgr);
+      const avgDays = all.length ? all.reduce((s, e) => s + tenureDays(e.joining_date), 0) / all.length : 0;
+      return { mgr, direct: (byMgr.get(mgr) ?? []).length, total: all.length, avg: tenureLabel(Math.round(avgDays)) };
+    }).sort((a, b) => b.total - a.total);
+  }, [onRoll]);
 
   const atRisk = useMemo(
-    () => filtered.filter((e) => e.attrition_risk >= 60).sort((a, b) => b.attrition_risk - a.attrition_risk),
-    [filtered],
+    () => onRoll.filter((e) => e.attrition_risk >= 60).sort((a, b) => b.attrition_risk - a.attrition_risk),
+    [onRoll],
   );
 
   const tier = isAdmin ? "HRBP Command Center"
@@ -216,7 +248,6 @@ function CommandCenter() {
 
   const onRegenerated = () => {
     qc.invalidateQueries({ queryKey: ["employees"] });
-    // refresh picked card from latest data after invalidation
     if (picked) {
       setTimeout(() => {
         const fresh = employees.find((e) => e.emp_id === picked.emp_id);
@@ -226,64 +257,89 @@ function CommandCenter() {
   };
 
   return (
-    <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-7">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
           <div className="text-xs uppercase tracking-widest text-accent font-medium">{tier}</div>
           <h1 className="font-display text-3xl md:text-4xl">Good to see you{email ? `, ${email.split("@")[0]}` : ""}.</h1>
-          <p className="text-muted-foreground text-sm">An AI-augmented snapshot of your team's health, risk, and momentum.</p>
+          <p className="text-muted-foreground text-sm">Executive overview of headcount, movement and risk across your scope.</p>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportEmployeesXlsx(filtered, `talent-iq-${role ?? "team"}`)}>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportEmployeesXlsx(onRoll, `talent-iq-${role ?? "team"}`)}>
           <Download className="size-4" /> Export Team Data
         </Button>
       </header>
 
-      {/* Executive Summary */}
-      <section>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
-          <ExecKpi icon={Users} label="Visible" value={total} sub={isAdmin ? "org-wide" : "in span"} />
-          <ExecKpi icon={AlertTriangle} label="High Risk" value={highRisk} sub="score ≥ 65" tone={highRisk > 0 ? "warning" : "default"} />
-          <ExecKpi icon={Activity} label="Critical Talent" value={critical} sub="urgent action" tone={critical > 0 ? "danger" : "default"} />
-          <ExecKpi icon={Crown} label="Succession Ready" value={successionReady} sub="now + 1yr" tone="good" />
-          <ExecKpi icon={Brain} label="AI Readiness" value={`${aiReadyPct}%`} sub="Champion + Ready" />
-          <ExecKpi icon={TrendingUp} label="Avg Perf" value={avgPerf} sub="/ 5" tone={Number(avgPerf) >= 3.5 ? "good" : "default"} />
-          <ExecKpi icon={Target} label="Avg Risk" value={avgRisk} sub="/ 100" tone={avgRisk >= 60 ? "warning" : "default"} />
-          <ExecKpi icon={Sparkles} label="Stars · New" value={`${stars} · ${newJoiners}`} sub="9-box · <12mo" />
-        </div>
-        <div className="mt-2 text-xs text-muted-foreground px-1">
-          Top retention concern across visible team: <span className="font-medium text-foreground">{topDriver}</span>
-        </div>
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard icon={Users} label="Total On-Roll" value={onRoll.length} />
+        <KpiCard icon={UserPlus} label="New Joiners" value={newJoiners.length} tone="good" onClick={() => setModal("joiners")} />
+        <KpiCard icon={TrendingUp} label="Promotions" value={promotions.length} tone="good" onClick={() => setModal("promotions")} />
+        <KpiCard icon={LogOut} label="Exits" value={exits.length} tone={exits.length > 0 ? "danger" : "default"} />
+        <KpiCard icon={CalendarRange} label="Apr 2026 Baseline" value={baseline} />
+        <KpiCard icon={Activity} label="Active Headcount" value={activeHeadcount} tone="good" />
       </section>
 
-      {/* Filters */}
-      <section className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, role, sub-vertical…"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
-        </div>
-        <select value={dept} onChange={(e) => setDept(e.target.value)}
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background">
-          <option value="all">All departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select value={riskBand} onChange={(e) => setRiskBand(e.target.value)}
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background">
-          <option value="all">All risk bands</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        {(search || dept !== "all" || riskBand !== "all") && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setDept("all"); setRiskBand("all"); }}>Clear</Button>
-        )}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="size-4 text-accent" />
+              <h2 className="font-display text-lg">Level-Wise Headcount</h2>
+            </div>
+            <div className="space-y-2">
+              {Object.entries(byLevel).map(([lvl, count]) => (
+                <div key={lvl} className="flex items-center gap-3">
+                  <span className="w-16 text-xs font-medium text-muted-foreground">{lvl}</span>
+                  <div className="flex-1 h-5 rounded bg-secondary/60 overflow-hidden">
+                    <div className="h-full rounded bg-accent/70 transition-all" style={{ width: `${(count / maxLevel) * 100}%` }} />
+                  </div>
+                  <span className="w-8 text-right text-sm font-medium">{count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="size-4 text-accent" />
+              <h2 className="font-display text-lg">Manager Distribution</h2>
+            </div>
+            <div className="max-h-[320px] overflow-y-auto -mx-1">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-1 pb-2">Manager</th>
+                    <th className="text-center px-1 pb-2">Reportees</th>
+                    <th className="text-right px-1 pb-2">Avg Tenure</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {managerRows.map((r) => (
+                    <tr key={r.mgr}>
+                      <td className="px-1 py-2">
+                        <div className="font-medium">{nameFromEmail(r.mgr)}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{r.mgr}</div>
+                      </td>
+                      <td className="px-1 py-2 text-center">
+                        {r.total}<span className="text-[11px] text-muted-foreground"> ({r.direct} direct)</span>
+                      </td>
+                      <td className="px-1 py-2 text-right">{r.avg}</td>
+                    </tr>
+                  ))}
+                  {managerRows.length === 0 && (
+                    <tr><td colSpan={3} className="py-6 text-center text-sm text-muted-foreground">No managers in scope.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Attention Required */}
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-display text-xl">Attention Required</h2>
+          <h2 className="font-display text-xl flex items-center gap-2"><AlertTriangle className="size-5 text-rag-amber" /> Attention Required</h2>
           <span className="text-xs text-muted-foreground">{atRisk.length} at risk · score ≥ 60</span>
         </div>
         {isLoading ? (
@@ -312,42 +368,62 @@ function CommandCenter() {
         )}
       </section>
 
-      {/* All visible team table */}
-      <section>
-        <h2 className="font-display text-xl mb-3">Team Roster · {filtered.length}</h2>
-        <Card><CardContent className="p-0 overflow-x-auto">
+      {/* New joiners / promotions detail */}
+      <Sheet open={!!modal} onOpenChange={(o) => !o && setModal(null)}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-6">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="font-display">{modal === "joiners" ? "New Joiners" : "Promotions"}</SheetTitle>
+            <SheetDescription>
+              {modal === "joiners" ? `${newJoiners.length} in scope` : `${promotions.length} promoted employees in scope`}
+            </SheetDescription>
+          </SheetHeader>
           <table className="w-full text-sm">
-            <thead className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
+            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground border-b">
               <tr>
-                <th className="text-left px-4 py-2.5">Name</th>
-                <th className="text-left px-4 py-2.5 hidden md:table-cell">Department</th>
-                <th className="text-left px-4 py-2.5 hidden lg:table-cell">Segment</th>
-                <th className="text-center px-4 py-2.5">Perf</th>
-                <th className="text-center px-4 py-2.5">Pot</th>
-                <th className="text-center px-4 py-2.5">Risk</th>
+                <th className="text-left py-2">Code</th>
+                <th className="text-left py-2">Name</th>
+                {modal === "joiners" ? (
+                  <>
+                    <th className="text-left py-2">Level</th>
+                    <th className="text-left py-2">Reporting Manager</th>
+                    <th className="text-right py-2">Days</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="text-left py-2">Previous</th>
+                    <th className="text-left py-2">New Level</th>
+                    <th className="text-right py-2">Effective</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((e) => (
-                <tr key={e.emp_id} onClick={() => setPicked(e)} className="hover:bg-secondary/40 cursor-pointer">
-                  <td className="px-4 py-2.5">
-                    <div className="font-medium">{e.name}</div>
-                    <div className="text-xs text-muted-foreground">{e.job_title}</div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground">{e.department} · {e.sub_vertical}</td>
-                  <td className="px-4 py-2.5 hidden lg:table-cell text-xs">{e.talent_segment ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-center">{e.h2_rating}</td>
-                  <td className="px-4 py-2.5 text-center">{e.potential_rating}</td>
-                  <td className="px-4 py-2.5 text-center"><RagBadge score={e.attrition_risk} /></td>
+              {(modal === "joiners" ? newJoiners : promotions).map((e) => (
+                <tr key={e.emp_id}>
+                  <td className="py-2 text-muted-foreground">{e.emp_id}</td>
+                  <td className="py-2 font-medium">{e.name}</td>
+                  {modal === "joiners" ? (
+                    <>
+                      <td className="py-2">{e.level ?? "—"}</td>
+                      <td className="py-2 text-muted-foreground">{nameFromEmail(e.manager_email)}</td>
+                      <td className="py-2 text-right">{tenureDays(e.joining_date)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2">{e.previous_level ?? "—"}</td>
+                      <td className="py-2">{e.promoted_level ?? e.level ?? "—"}</td>
+                      <td className="py-2 text-right">{e.promotion_effective_date ?? "—"}</td>
+                    </>
+                  )}
                 </tr>
               ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No employees match your filters.</td></tr>
+              {(modal === "joiners" ? newJoiners : promotions).length === 0 && (
+                <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Nothing recorded yet.</td></tr>
               )}
             </tbody>
           </table>
-        </CardContent></Card>
-      </section>
+        </SheetContent>
+      </Sheet>
 
       <EmployeeDetail employee={picked} onClose={() => setPicked(null)} onRegenerated={onRegenerated} />
     </div>
