@@ -223,3 +223,78 @@ export const listDepartmentInsights = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
+const IdpSchema = z.object({
+  placement_reasoning: z.array(z.string().min(5).max(220)).min(3).max(5),
+  development_priority: z.enum(["Critical", "High", "Medium", "Low"]),
+  quick_wins_30d: z.array(z.string().min(5).max(180)).min(3).max(3),
+  capability_60d: z.array(z.string().min(5).max(180)).min(3).max(3),
+  outcomes_90d: z.array(z.string().min(5).max(180)).min(3).max(3),
+  manager_actions: z.array(z.string().min(5).max(180)).min(3).max(3),
+  hrbp_actions: z.array(z.string().min(5).max(180)).min(3).max(3),
+  executive_summary: z.string().min(30).max(420),
+});
+
+export const generateIdp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ emp_id: z.string().min(1) }).parse(d))
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { supabase } = context as unknown as { supabase: any };
+    const { data: emp, error } = await supabase
+      .from("employees").select("*").eq("emp_id", data.emp_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!emp) throw new Error("Employee not found or not visible");
+
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI is not configured");
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const { generateText, Output } = await import("ai");
+    const gateway = createLovableAiGatewayProvider(key);
+
+    const tenureMonths = Math.round((Date.now() - new Date(emp.joining_date).getTime()) / (30.44 * 86400000));
+    const perf = Number(emp.annual_rating ?? emp.h2_rating ?? 3);
+    const pot = Number(emp.potential_rating ?? 3);
+    const axis = `${perf >= 3.5 ? "High" : perf >= 2.5 ? "Moderate" : "Low"} performance / ${pot >= 3.5 ? "High" : pot >= 2.5 ? "Moderate" : "Low"} potential`;
+
+    const { output } = await generateText({
+      model: gateway("google/gemini-3-flash-preview"),
+      output: Output.object({ schema: IdpSchema }),
+      system:
+        "You are a senior HRBP and engineering-leadership coach at FieldAssist (B2B SaaS). You write hyper-specific, low-cost, manager-driven development plans. Never produce generic HR filler; every line must reference this individual's actual numbers, tenure, role or function context.",
+      prompt: `Build an Individual Development Plan.
+
+Employee: ${emp.name}
+Employee code: ${emp.emp_id}
+Role: ${emp.job_title ?? "—"} (${emp.level ?? "—"}) · ${emp.department} / ${emp.sub_vertical ?? "—"}
+Tenure: ${tenureMonths} months
+Annual Rating: ${perf}/5 · Potential Rating: ${pot}/5 · Placement axis: ${axis}
+9-Box segment: ${emp.nine_box_quadrant} · Talent segment: ${emp.talent_segment ?? "—"}
+Attrition risk score: ${emp.attrition_risk}/100 · Risk drivers: ${(emp.flight_risk_drivers ?? []).join(", ") || "none recorded"}
+Leadership readiness: ${emp.leadership_readiness ?? "—"}
+Manager feedback / HRBP notes: ${emp.hrbp_insights ?? "none recorded"}
+Succession notes: ${emp.succession_notes ?? "none"}
+
+Placement reasoning rubric:
+- High performance + low potential = excellent execution and domain delivery, limited strategic oversight or leadership readiness.
+- High potential + low performance = strong foundational capability, but inconsistent execution, operational friction or role mismatch.
+- Low performance + low potential = fundamental skill gap, burnout or engagement issue requiring structural intervention.
+- High performance + high potential = high-velocity top performer / future leader, ready for fast-track growth and scope expansion.
+
+Design principles for every action: easy to execute, high business impact, low financial cost, achievable in 30-90 days, minimal HR overhead, primarily manager-driven, and contextualised to their function (for Technology use pair programming, architecture reviews, sprint planning, unit-test coverage, module ownership, on-call/incident quality; for other functions use their equivalents).
+
+Return:
+- placement_reasoning: 3-5 bullets citing this person's exact rating (${perf}), potential (${pot}), risk (${emp.attrition_risk}) and tenure (${tenureMonths} months).
+- development_priority: Critical / High / Medium / Low, driven by risk score and rating gap.
+- quick_wins_30d: exactly 3 immediate execution actions.
+- capability_60d: exactly 3 domain/scope expansion actions.
+- outcomes_90d: exactly 3 measurable target metrics with numbers.
+- manager_actions: exactly 3 specific manager mandates.
+- hrbp_actions: exactly 3 lightweight HRBP interventions.
+- executive_summary: 2-3 sentences on the next best career step.
+
+Do not reuse boilerplate that would fit any other employee.`,
+    });
+
+    return { ...output, emp_id: emp.emp_id };
+  });
