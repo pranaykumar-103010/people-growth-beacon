@@ -38,7 +38,24 @@ export type Employee = {
   new_joiner_exp_feedback: number | null;
   new_joiner_mgr_feedback: number | null;
   new_joiner_risk_score: number | null;
+  location: string | null;
+  enps_score: number | null;
+  one_on_one_cadence: string | null;
+  goal_quality_index: number | null;
+  prev_fy_rating: number | null;
+  exit_type: string | null;
+  is_critical_role: boolean;
 };
+
+export type TenureBand = "<1 yr" | "1–3 yrs" | "3–5 yrs" | "5+ yrs";
+export const TENURE_BANDS: TenureBand[] = ["<1 yr", "1–3 yrs", "3–5 yrs", "5+ yrs"];
+export function tenureBand(joining: string): TenureBand {
+  const y = (Date.now() - new Date(joining).getTime()) / (365.25 * 86400000);
+  if (y < 1) return "<1 yr";
+  if (y < 3) return "1–3 yrs";
+  if (y < 5) return "3–5 yrs";
+  return "5+ yrs";
+}
 
 export const TALENT_SEGMENTS = [
   "Future Leaders", "Core Talent", "Watch List", "Retention Priority",

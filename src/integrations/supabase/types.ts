@@ -111,16 +111,21 @@ export type Database = {
           department: string
           email: string | null
           emp_id: string
+          enps_score: number | null
           exit_date: string | null
+          exit_type: string | null
           flight_risk_drivers: string[] | null
           function_head_email: string | null
           future_career_path: string | null
+          goal_quality_index: number | null
           h2_rating: number
           hrbp_insights: string | null
+          is_critical_role: boolean
           job_title: string | null
           joining_date: string
           leadership_readiness: string | null
           level: string | null
+          location: string | null
           manager_email: string
           name: string
           new_joiner_exp_feedback: number | null
@@ -128,7 +133,9 @@ export type Database = {
           new_joiner_risk_score: number | null
           nine_box_override: string | null
           nine_box_quadrant: string
+          one_on_one_cadence: string | null
           potential_rating: number
+          prev_fy_rating: number | null
           previous_level: string | null
           promoted_level: string | null
           promotion_effective_date: string | null
@@ -152,16 +159,21 @@ export type Database = {
           department?: string
           email?: string | null
           emp_id: string
+          enps_score?: number | null
           exit_date?: string | null
+          exit_type?: string | null
           flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
+          goal_quality_index?: number | null
           h2_rating?: number
           hrbp_insights?: string | null
+          is_critical_role?: boolean
           job_title?: string | null
           joining_date?: string
           leadership_readiness?: string | null
           level?: string | null
+          location?: string | null
           manager_email: string
           name: string
           new_joiner_exp_feedback?: number | null
@@ -169,7 +181,9 @@ export type Database = {
           new_joiner_risk_score?: number | null
           nine_box_override?: string | null
           nine_box_quadrant?: string
+          one_on_one_cadence?: string | null
           potential_rating?: number
+          prev_fy_rating?: number | null
           previous_level?: string | null
           promoted_level?: string | null
           promotion_effective_date?: string | null
@@ -193,16 +207,21 @@ export type Database = {
           department?: string
           email?: string | null
           emp_id?: string
+          enps_score?: number | null
           exit_date?: string | null
+          exit_type?: string | null
           flight_risk_drivers?: string[] | null
           function_head_email?: string | null
           future_career_path?: string | null
+          goal_quality_index?: number | null
           h2_rating?: number
           hrbp_insights?: string | null
+          is_critical_role?: boolean
           job_title?: string | null
           joining_date?: string
           leadership_readiness?: string | null
           level?: string | null
+          location?: string | null
           manager_email?: string
           name?: string
           new_joiner_exp_feedback?: number | null
@@ -210,7 +229,9 @@ export type Database = {
           new_joiner_risk_score?: number | null
           nine_box_override?: string | null
           nine_box_quadrant?: string
+          one_on_one_cadence?: string | null
           potential_rating?: number
+          prev_fy_rating?: number | null
           previous_level?: string | null
           promoted_level?: string | null
           promotion_effective_date?: string | null
@@ -220,6 +241,60 @@ export type Database = {
           sub_vertical?: string | null
           succession_notes?: string | null
           talent_segment?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hrbp_actions: {
+        Row: {
+          assigned_hrbp: string | null
+          category: string
+          context: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          manager_email: string | null
+          recommended_action: string | null
+          root_cause: string | null
+          status: string
+          subject_emp_id: string | null
+          subject_name: string | null
+          title: string
+          trigger_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_hrbp?: string | null
+          category?: string
+          context?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_email?: string | null
+          recommended_action?: string | null
+          root_cause?: string | null
+          status?: string
+          subject_emp_id?: string | null
+          subject_name?: string | null
+          title: string
+          trigger_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_hrbp?: string | null
+          category?: string
+          context?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_email?: string | null
+          recommended_action?: string | null
+          root_cause?: string | null
+          status?: string
+          subject_emp_id?: string | null
+          subject_name?: string | null
+          title?: string
+          trigger_type?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -277,6 +352,48 @@ export type Database = {
           department?: string
           id?: string
           user_email?: string
+        }
+        Relationships: []
+      }
+      open_positions: {
+        Row: {
+          created_at: string
+          department: string
+          filled_on: string | null
+          hiring_manager_email: string | null
+          id: string
+          level: string | null
+          location: string | null
+          opened_on: string
+          status: string
+          sub_vertical: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          filled_on?: string | null
+          hiring_manager_email?: string | null
+          id?: string
+          level?: string | null
+          location?: string | null
+          opened_on?: string
+          status?: string
+          sub_vertical?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          filled_on?: string | null
+          hiring_manager_email?: string | null
+          id?: string
+          level?: string | null
+          location?: string | null
+          opened_on?: string
+          status?: string
+          sub_vertical?: string | null
+          title?: string
         }
         Relationships: []
       }
