@@ -23,5 +23,9 @@ function AppLayout() {
   }, [user, email, loading, navigate]);
 
   if (loading || !user) return null;
-  return <AppShell><ErrorBoundary label="app-route"><Outlet /></ErrorBoundary></AppShell>;
+  return (
+    <ScopeProvider>
+      <AppShell><ErrorBoundary label="app-route"><Outlet /></ErrorBoundary></AppShell>
+    </ScopeProvider>
+  );
 }
