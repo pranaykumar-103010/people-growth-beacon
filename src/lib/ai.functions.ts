@@ -298,3 +298,41 @@ Do not reuse boilerplate that would fit any other employee.`,
 
     return { ...output, emp_id: emp.emp_id };
   });
+
+const ExecInsightSchema = z.object({
+  insights: z.array(z.object({
+    title: z.string().min(4).max(90),
+    detail: z.string().min(10).max(260),
+    tone: z.enum(["good", "watch", "risk"]),
+  })).min(3).max(5),
+});
+
+export const generateExecutiveInsights = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ summary: z.string().min(10).max(6000), scope: z.string().max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI is not configured");
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const { generateText, Output } = await import("ai");
+    const gateway = createLovableAiGatewayProvider(key);
+
+    const { output } = await generateText({
+      model: gateway("google/gemini-3-flash-preview"),
+      output: Output.object({ schema: ExecInsightSchema }),
+      system: "You are the Chief People Officer's analyst at FieldAssist, a B2B SaaS company. You write blunt, quantified, board-ready talent takeaways. Never invent numbers that are not in the data provided.",
+      prompt: `Scope: ${data.scope}
+
+Aggregated workforce telemetry:
+${data.summary}
+
+Produce 3-5 cross-cutting executive takeaways. Each must:
+- name the specific function / sub-department / level involved
+- quote a real number from the data
+- contrast two signals where possible (e.g. high performance but high flight risk)
+- tone: "good" for strengths, "watch" for emerging concerns, "risk" for urgent issues.
+Keep each detail to one or two crisp sentences.`,
+    });
+
+    return output.insights;
+  });
