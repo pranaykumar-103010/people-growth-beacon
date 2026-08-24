@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { isAllowedEmail } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ScopeProvider } from "@/lib/scope";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
