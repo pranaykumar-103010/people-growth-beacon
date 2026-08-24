@@ -1,337 +1,243 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { Users, UserPlus, TrendingUp, LogOut, CalendarRange, Activity, Download, RefreshCw, Brain, AlertTriangle, BarChart3 } from "lucide-react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Download, HeartPulse, RefreshCw, Sparkles, TrendingUp, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { RagBadge } from "@/components/Rag";
-import { tenureDays, LEADERSHIP_LABEL } from "@/lib/types";
-import type { Employee } from "@/lib/types";
+import { useScope, SCOPE_LABEL } from "@/lib/scope";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { RagBadge } from "@/components/Rag";
+import { KpiCard } from "@/components/Kpi";
+import { EmployeeDetail } from "@/components/EmployeeDetail";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 import { exportEmployeesXlsx } from "@/lib/export";
-import { generateEmployeeInsight } from "@/lib/ai.functions";
+import { tenureDays } from "@/lib/types";
+import type { Employee } from "@/lib/types";
+import { generateExecutiveInsights } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/")({ component: CommandCenter });
+export const Route = createFileRoute("/_app/")({
+  component: Overview,
+  head: () => ({
+    meta: [
+      { title: "Executive Overview · Talent IQ" },
+      { name: "description", content: "Organisation Health Index, enterprise risk heatmap and AI executive insights for the FieldAssist Tech organisation." },
+      { property: "og:title", content: "Executive Overview · Talent IQ" },
+      { property: "og:description", content: "Health index, risk heatmap and AI-generated talent takeaways for HRBP and CXO decision making." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+});
 
-const BASELINE = new Date("2026-04-01T00:00:00Z");
-const LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+type Insight = { title: string; detail: string; tone: "good" | "watch" | "risk" };
 
-function KpiCard({ icon: Icon, label, value, tone, onClick }: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string; value: string | number;
-  tone?: "default" | "warning" | "good" | "danger";
-  onClick?: () => void;
-}) {
-  const accent = tone === "warning" ? "text-rag-amber bg-rag-amber/10"
-    : tone === "good" ? "text-rag-green bg-rag-green/10"
-    : tone === "danger" ? "text-rag-red bg-rag-red/10" : "text-accent bg-accent/10";
-  return (
-    <Card
-      onClick={onClick}
-      className={`shadow-sm ring-1 ring-border border-0 ${onClick ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition" : ""}`}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-            <div className="mt-1.5 font-display text-3xl text-foreground">{value}</div>
-            {onClick && <div className="mt-0.5 text-[11px] text-accent">View details →</div>}
-          </div>
-          <div className={`size-9 rounded-md grid place-items-center flex-shrink-0 ${accent}`}>
-            <Icon className="size-4" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+const TONE_CLASS: Record<Insight["tone"], string> = {
+  good: "border-rag-green/35 bg-rag-green/[0.06]",
+  watch: "border-rag-amber/40 bg-rag-amber/[0.07]",
+  risk: "border-rag-red/35 bg-rag-red/[0.06]",
+};
+
+function pct(n: number, d: number) {
+  return d === 0 ? 0 : Math.round((n / d) * 100);
 }
 
-function EmployeeDetail({
-  employee, onClose, onRegenerated,
-}: { employee: Employee | null; onClose: () => void; onRegenerated: () => void }) {
-  const generate = useServerFn(generateEmployeeInsight);
+/** 0-100 composite: retention, performance, succession depth, engagement, manager cadence. */
+function healthIndex(list: Employee[]) {
+  if (list.length === 0) return { score: 0, parts: [] as { label: string; value: number }[] };
+  const retention = 100 - list.reduce((s, e) => s + e.attrition_risk, 0) / list.length;
+  const performance = (list.reduce((s, e) => s + e.annual_rating, 0) / list.length / 5) * 100;
+  const critical = list.filter((e) => e.is_critical_role);
+  const covered = critical.filter((e) => e.leadership_readiness === "ready_now" || e.leadership_readiness === "ready_1y");
+  const succession = critical.length === 0 ? 70 : pct(covered.length, critical.length);
+  const enpsVals = list.map((e) => e.enps_score).filter((v): v is number => v !== null);
+  const engagement = enpsVals.length ? ((enpsVals.reduce((s, v) => s + v, 0) / enpsVals.length + 100) / 200) * 100 : 60;
+  const cadence = pct(list.filter((e) => e.one_on_one_cadence === "Weekly" || e.one_on_one_cadence === "Fortnightly").length, list.length);
+  const parts = [
+    { label: "Retention", value: Math.round(retention) },
+    { label: "Performance", value: Math.round(performance) },
+    { label: "Succession Depth", value: Math.round(succession) },
+    { label: "Engagement (eNPS)", value: Math.round(engagement) },
+    { label: "Manager Cadence", value: Math.round(cadence) },
+  ];
+  const weights = [0.3, 0.25, 0.2, 0.15, 0.1];
+  const score = Math.round(parts.reduce((s, p, i) => s + p.value * weights[i], 0));
+  return { score, parts };
+}
+
+function Overview() {
+  const { email, role, isAdmin } = useAuth();
+  const { employees, scope, isLoading } = useScope();
+  const qc = useQueryClient();
+  const runInsights = useServerFn(generateExecutiveInsights);
+  const [picked, setPicked] = useState<Employee | null>(null);
+  const [insights, setInsights] = useState<Insight[] | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const handleRegen = async () => {
-    if (!employee) return;
-    setBusy(true);
-    try {
-      await generate({ data: { emp_id: employee.emp_id } });
-      toast.success("AI insight refreshed");
-      onRegenerated();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to generate insight");
-    } finally { setBusy(false); }
-  };
-
-  return (
-    <Sheet open={!!employee} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-6">
-        {employee && (
-          <>
-            <SheetHeader className="mb-4">
-              <SheetTitle className="font-display flex items-center gap-2 flex-wrap">
-                {employee.name}
-                <RagBadge score={employee.attrition_risk} />
-              </SheetTitle>
-              <SheetDescription>{employee.job_title} · {employee.sub_vertical}</SheetDescription>
-            </SheetHeader>
-
-            <div className="grid grid-cols-4 gap-2 text-xs mb-4">
-              <Stat label="Annual" value={employee.annual_rating} />
-              <Stat label="Potential" value={employee.potential_rating} />
-              <Stat label="Risk" value={employee.attrition_risk} />
-              <Stat label="AI Idx" value={employee.ai_readiness_score ?? "—"} />
-            </div>
-
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {employee.talent_segment && <Chip>{employee.talent_segment}</Chip>}
-              {employee.leadership_readiness && <Chip>{LEADERSHIP_LABEL[employee.leadership_readiness]}</Chip>}
-              {employee.ai_readiness_band && <Chip>{employee.ai_readiness_band}</Chip>}
-            </div>
-
-            <div className="rounded-lg border bg-card p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Brain className="size-3.5" /> AI HRBP Insight
-                </div>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={handleRegen} className="h-7 gap-1.5 text-xs">
-                  <RefreshCw className={`size-3 ${busy ? "animate-spin" : ""}`} /> Regenerate
-                </Button>
-              </div>
-              <p className="text-sm whitespace-pre-wrap">{employee.hrbp_insights ?? "No insight yet. Click Regenerate."}</p>
-            </div>
-
-            {employee.flight_risk_drivers && employee.flight_risk_drivers.length > 0 && (
-              <div className="mb-4">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Top Flight-Risk Drivers</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {employee.flight_risk_drivers.map((d) => (
-                    <span key={d} className="text-xs px-2.5 py-1 rounded-full bg-rag-red/10 text-rag-red border border-rag-red/20">{d}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {employee.ai_recommended_actions && employee.ai_recommended_actions.length > 0 && (
-              <div className="mb-4">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Recommended Actions · 30-60 days</div>
-                <ul className="space-y-1.5">
-                  {employee.ai_recommended_actions.map((a, i) => (
-                    <li key={i} className="text-sm flex items-start gap-2">
-                      <span className="size-5 rounded-full bg-accent/10 text-accent grid place-items-center text-[10px] font-medium flex-shrink-0 mt-0.5">{i + 1}</span>
-                      <span>{a}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="space-y-3 text-sm pt-3 border-t">
-              <Block label="Manager" value={employee.manager_email} />
-              <Block label="Roll-up Manager" value={employee.rollup_manager_email ?? "—"} />
-              <Block label="Function Head" value={employee.function_head_email ?? "—"} />
-              <Block label="Succession · Next Steps" value={employee.succession_notes ?? "Not set."} />
-              <Block label="Future Career Path" value={employee.future_career_path ?? "Not set."} />
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-md bg-secondary/60 p-2 text-center">
-      <div className="text-[10px] uppercase text-muted-foreground tracking-wider">{label}</div>
-      <div className="font-display text-base">{value}</div>
-    </div>
-  );
-}
-function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">{children}</span>;
-}
-function Block({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
-      <div className="whitespace-pre-wrap text-sm">{value}</div>
-    </div>
-  );
-}
-
-function nameFromEmail(email: string | null | undefined) {
-  if (!email) return "—";
-  return email.split("@")[0].split(/[._-]/).filter(Boolean)
-    .map((p) => p[0].toUpperCase() + p.slice(1)).join(" ");
-}
-
-function tenureLabel(days: number) {
-  const years = Math.floor(days / 365);
-  const months = Math.round((days % 365) / 30.44);
-  if (years <= 0) return `${months} mo`;
-  return `${years}y ${months}m`;
-}
-
-function CommandCenter() {
-  const { email, role, isAdmin } = useAuth();
-  const { data: employees = [], isLoading } = useEmployees();
-  const qc = useQueryClient();
-  const [picked, setPicked] = useState<Employee | null>(null);
-  const [modal, setModal] = useState<"joiners" | "promotions" | null>(null);
-
   const onRoll = useMemo(() => employees.filter((e) => e.active && !e.exit_date), [employees]);
-
-  const newJoiners = useMemo(
-    () => onRoll.filter((e) => tenureDays(e.joining_date) <= 90).sort((a, b) => tenureDays(a.joining_date) - tenureDays(b.joining_date)),
-    [onRoll],
-  );
-  const promotions = useMemo(
-    () => employees.filter((e) => !!e.promotion_effective_date || !!e.promoted_level),
-    [employees],
-  );
-  const exits = useMemo(
-    () => employees.filter((e) => e.exit_date && new Date(e.exit_date) >= BASELINE),
-    [employees],
-  );
-  const baseline = useMemo(
-    () => employees.filter((e) => new Date(e.joining_date) < BASELINE && (!e.exit_date || new Date(e.exit_date) >= BASELINE)).length,
-    [employees],
-  );
-  const activeHeadcount = baseline - exits.length;
-
-  const byLevel = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const l of LEVELS) m[l] = 0;
-    for (const e of onRoll) {
-      const l = (e.level ?? "").toUpperCase().trim();
-      if (l in m) m[l] += 1; else m[l || "Unmapped"] = (m[l || "Unmapped"] ?? 0) + 1;
-    }
-    return m;
-  }, [onRoll]);
-  const maxLevel = Math.max(1, ...Object.values(byLevel));
-
-  const managerRows = useMemo(() => {
-    const byMgr = new Map<string, Employee[]>();
-    for (const e of onRoll) {
-      const k = (e.manager_email ?? "").toLowerCase();
-      if (!k) continue;
-      byMgr.set(k, [...(byMgr.get(k) ?? []), e]);
-    }
-    const descendants = (mgr: string, seen = new Set<string>()): Employee[] => {
-      if (seen.has(mgr)) return [];
-      seen.add(mgr);
-      const direct = byMgr.get(mgr) ?? [];
-      return direct.flatMap((d) => [d, ...descendants((d.email ?? "").toLowerCase(), seen)]);
-    };
-    return Array.from(byMgr.keys()).map((mgr) => {
-      const all = descendants(mgr);
-      const avgDays = all.length ? all.reduce((s, e) => s + tenureDays(e.joining_date), 0) / all.length : 0;
-      return { mgr, direct: (byMgr.get(mgr) ?? []).length, total: all.length, avg: tenureLabel(Math.round(avgDays)) };
-    }).sort((a, b) => b.total - a.total);
-  }, [onRoll]);
-
+  const health = useMemo(() => healthIndex(onRoll), [onRoll]);
   const atRisk = useMemo(
     () => onRoll.filter((e) => e.attrition_risk >= 60).sort((a, b) => b.attrition_risk - a.attrition_risk),
     [onRoll],
   );
+  const criticalUncovered = useMemo(
+    () => onRoll.filter((e) => e.is_critical_role && e.leadership_readiness !== "ready_now" && e.leadership_readiness !== "ready_1y"),
+    [onRoll],
+  );
+  const hipoAtRisk = useMemo(
+    () => atRisk.filter((e) => e.potential_rating >= 3.5 && e.annual_rating >= 3.5),
+    [atRisk],
+  );
+
+  const heatmap = useMemo(() => {
+    const m = new Map<string, Employee[]>();
+    for (const e of onRoll) {
+      const k = e.sub_vertical ?? "Unmapped";
+      m.set(k, [...(m.get(k) ?? []), e]);
+    }
+    return Array.from(m.entries()).map(([sub, list]) => ({
+      sub,
+      size: list.length,
+      risk: Math.round(list.reduce((s, e) => s + e.attrition_risk, 0) / list.length),
+      rating: list.reduce((s, e) => s + e.annual_rating, 0) / list.length,
+      critical: list.filter((e) => e.is_critical_role).length,
+    })).sort((a, b) => b.risk - a.risk);
+  }, [onRoll]);
+
+  const summary = useMemo(() => {
+    const lines = [
+      `Population: ${onRoll.length} on-roll. Health Index ${health.score}/100 (${health.parts.map((p) => `${p.label} ${p.value}`).join(", ")}).`,
+      `At flight risk (score >= 60): ${atRisk.length} (${pct(atRisk.length, onRoll.length)}%). High performers at risk: ${hipoAtRisk.length}.`,
+      `Critical roles without ready-now/1-year successor: ${criticalUncovered.length}.`,
+      `New joiners <= 90 days: ${onRoll.filter((e) => tenureDays(e.joining_date) <= 90).length}.`,
+      "Sub-department telemetry (name | headcount | avg risk | avg rating | critical roles):",
+      ...heatmap.map((h) => `${h.sub} | ${h.size} | ${h.risk} | ${h.rating.toFixed(2)} | ${h.critical}`),
+    ];
+    return lines.join("\n");
+  }, [onRoll, health, atRisk, hipoAtRisk, criticalUncovered, heatmap]);
+
+  const generate = async () => {
+    setBusy(true);
+    try {
+      const out = (await runInsights({ data: { summary, scope: SCOPE_LABEL[scope] } })) as Insight[];
+      setInsights(out);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate executive insights");
+    } finally { setBusy(false); }
+  };
 
   const tier = isAdmin ? "HRBP Command Center"
     : role === "function_head" ? "Function Head Command Center"
-    : role === "rollup_manager" ? "Roll-up Manager Command Center"
+    : role === "rollup_manager" ? "Roll-up Command Center"
     : "Manager Command Center";
 
-  const onRegenerated = () => {
-    qc.invalidateQueries({ queryKey: ["employees"] });
-    if (picked) {
-      setTimeout(() => {
-        const fresh = employees.find((e) => e.emp_id === picked.emp_id);
-        if (fresh) setPicked(fresh);
-      }, 500);
-    }
-  };
+  const band = health.score >= 75 ? { label: "Healthy", cls: "text-rag-green bg-rag-green/10 ring-rag-green/30" }
+    : health.score >= 60 ? { label: "Watch", cls: "text-rag-amber bg-rag-amber/10 ring-rag-amber/30" }
+    : { label: "At Risk", cls: "text-rag-red bg-rag-red/10 ring-rag-red/30" };
 
   return (
     <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-7">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
-          <div className="text-xs uppercase tracking-widest text-accent font-medium">{tier}</div>
+          <div className="text-xs uppercase tracking-widest text-accent font-medium">{tier} · {SCOPE_LABEL[scope]}</div>
           <h1 className="font-display text-3xl md:text-4xl">Good to see you{email ? `, ${email.split("@")[0]}` : ""}.</h1>
-          <p className="text-muted-foreground text-sm">Executive overview of headcount, movement and risk across your scope.</p>
+          <p className="text-muted-foreground text-sm">One screen for organisation health, concentrated risk and what to do next.</p>
         </div>
         <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportEmployeesXlsx(onRoll, `talent-iq-${role ?? "team"}`)}>
           <Download className="size-4" /> Export Team Data
         </Button>
       </header>
 
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard icon={Users} label="Total On-Roll" value={onRoll.length} />
-        <KpiCard icon={UserPlus} label="New Joiners" value={newJoiners.length} tone="good" onClick={() => setModal("joiners")} />
-        <KpiCard icon={TrendingUp} label="Promotions" value={promotions.length} tone="good" onClick={() => setModal("promotions")} />
-        <KpiCard icon={LogOut} label="Exits" value={exits.length} tone={exits.length > 0 ? "danger" : "default"} />
-        <KpiCard icon={CalendarRange} label="Apr 2026 Baseline" value={baseline} />
-        <KpiCard icon={Activity} label="Active Headcount" value={activeHeadcount} tone="good" />
-      </section>
-
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+      <section className="grid gap-4 lg:grid-cols-[320px_1fr]">
+        <Card className="ring-1 ring-border border-0 shadow-sm">
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="size-4 text-accent" />
-              <h2 className="font-display text-lg">Level-Wise Headcount</h2>
+            <div className="flex items-center gap-2 mb-3">
+              <HeartPulse className="size-4 text-accent" />
+              <h2 className="font-display text-lg">Org Health Index</h2>
             </div>
-            <div className="space-y-2">
-              {Object.entries(byLevel).map(([lvl, count]) => (
-                <div key={lvl} className="flex items-center gap-3">
-                  <span className="w-16 text-xs font-medium text-muted-foreground">{lvl}</span>
-                  <div className="flex-1 h-5 rounded bg-secondary/60 overflow-hidden">
-                    <div className="h-full rounded bg-accent/70 transition-all" style={{ width: `${(count / maxLevel) * 100}%` }} />
+            <div className="flex items-end gap-3">
+              <div className="font-display text-6xl leading-none">{health.score}</div>
+              <span className={`mb-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ring-1 ${band.cls}`}>{band.label}</span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {health.parts.map((p) => (
+                <div key={p.label} className="flex items-center gap-2 text-xs">
+                  <span className="w-32 text-muted-foreground truncate">{p.label}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full bg-accent/75" style={{ width: `${Math.min(100, Math.max(0, p.value))}%` }} />
                   </div>
-                  <span className="w-8 text-right text-sm font-medium">{count}</span>
+                  <span className="w-7 text-right font-medium">{p.value}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 content-start">
+          <KpiCard icon={Users} label="On-Roll" value={onRoll.length} sub={`${SCOPE_LABEL[scope]}`} />
+          <KpiCard icon={AlertTriangle} label="At Flight Risk" value={atRisk.length} sub={`${pct(atRisk.length, onRoll.length)}% of scope`} tone={atRisk.length ? "danger" : "good"} />
+          <KpiCard icon={TrendingUp} label="High Performers at Risk" value={hipoAtRisk.length} sub="Rating & potential ≥ 3.5" tone={hipoAtRisk.length ? "warning" : "good"} />
+          <KpiCard icon={ShieldCheck} label="Uncovered Critical Roles" value={criticalUncovered.length} sub="No ready-now / 1-yr successor" tone={criticalUncovered.length ? "warning" : "good"} />
+        </div>
+      </section>
+
+      <section>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="size-4 text-accent" />
-              <h2 className="font-display text-lg">Manager Distribution</h2>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-accent" />
+                <h2 className="font-display text-lg">AI Executive Insights</h2>
+              </div>
+              <Button size="sm" variant={insights ? "ghost" : "default"} disabled={busy || onRoll.length === 0} onClick={generate} className="h-8 gap-1.5 text-xs">
+                <RefreshCw className={`size-3 ${busy ? "animate-spin" : ""}`} /> {insights ? "Regenerate" : "Generate"}
+              </Button>
             </div>
-            <div className="max-h-[320px] overflow-y-auto -mx-1">
-              <table className="w-full text-sm">
-                <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-1 pb-2">Manager</th>
-                    <th className="text-center px-1 pb-2">Reportees</th>
-                    <th className="text-right px-1 pb-2">Avg Tenure</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {managerRows.map((r) => (
-                    <tr key={r.mgr}>
-                      <td className="px-1 py-2">
-                        <div className="font-medium">{nameFromEmail(r.mgr)}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">{r.mgr}</div>
-                      </td>
-                      <td className="px-1 py-2 text-center">
-                        {r.total}<span className="text-[11px] text-muted-foreground"> ({r.direct} direct)</span>
-                      </td>
-                      <td className="px-1 py-2 text-right">{r.avg}</td>
-                    </tr>
-                  ))}
-                  {managerRows.length === 0 && (
-                    <tr><td colSpan={3} className="py-6 text-center text-sm text-muted-foreground">No managers in scope.</td></tr>
-                  )}
-                </tbody>
-              </table>
+            {!insights && !busy && (
+              <p className="text-sm text-muted-foreground">
+                Generate board-ready takeaways from the current scope and filters — {onRoll.length} people, {heatmap.length} sub-departments.
+              </p>
+            )}
+            {busy && !insights && <p className="text-sm text-muted-foreground">Reading risk, performance, succession and cadence signals…</p>}
+            {insights && (
+              <div className="grid gap-3 md:grid-cols-2">
+                {insights.map((i, idx) => (
+                  <div key={idx} className={`rounded-lg border p-3.5 ${TONE_CLASS[i.tone]}`}>
+                    <div className="text-sm font-semibold mb-1">{i.title}</div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{i.detail}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="font-display text-lg mb-1">Enterprise Risk Heatmap</h2>
+            <p className="text-xs text-muted-foreground mb-4">Sub-departments ranked by average flight-risk score.</p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {heatmap.map((h) => {
+                const cls = h.risk >= 65 ? "bg-rag-red/15 border-rag-red/40"
+                  : h.risk >= 40 ? "bg-rag-amber/15 border-rag-amber/40"
+                  : "bg-rag-green/12 border-rag-green/35";
+                return (
+                  <div key={h.sub} className={`rounded-lg border p-3 ${cls}`}>
+                    <div className="text-sm font-semibold truncate">{h.sub}</div>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-display text-2xl">{h.risk}</span>
+                      <span className="text-[11px] text-muted-foreground">avg risk · {h.size} people</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      Avg rating {h.rating.toFixed(2)} · {h.critical} critical {h.critical === 1 ? "role" : "roles"}
+                    </div>
+                  </div>
+                );
+              })}
+              {heatmap.length === 0 && <p className="text-sm text-muted-foreground">No population in scope.</p>}
             </div>
           </CardContent>
         </Card>
@@ -346,7 +252,7 @@ function CommandCenter() {
           <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Loading team…</CardContent></Card>
         ) : atRisk.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No one above the 60 risk threshold. Keep the conversations flowing.
+            No one above the 60 risk threshold in this scope.
           </CardContent></Card>
         ) : (
           <Card><CardContent className="p-0 divide-y divide-border">
@@ -358,8 +264,9 @@ function CommandCenter() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate flex items-center gap-2">{e.name}
                     {e.talent_segment && <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-normal">{e.talent_segment}</span>}
+                    {e.is_critical_role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-rag-red/10 text-rag-red font-normal">Critical role</span>}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">{e.job_title} · {e.sub_vertical}</div>
+                  <div className="text-xs text-muted-foreground truncate">{e.job_title} · {e.sub_vertical} · {e.location ?? "—"}</div>
                 </div>
                 <RagBadge score={e.attrition_risk} />
               </button>
@@ -368,64 +275,13 @@ function CommandCenter() {
         )}
       </section>
 
-      {/* New joiners / promotions detail */}
-      <Sheet open={!!modal} onOpenChange={(o) => !o && setModal(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-6">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="font-display">{modal === "joiners" ? "New Joiners" : "Promotions"}</SheetTitle>
-            <SheetDescription>
-              {modal === "joiners" ? `${newJoiners.length} in scope` : `${promotions.length} promoted employees in scope`}
-            </SheetDescription>
-          </SheetHeader>
-          <table className="w-full text-sm">
-            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground border-b">
-              <tr>
-                <th className="text-left py-2">Code</th>
-                <th className="text-left py-2">Name</th>
-                {modal === "joiners" ? (
-                  <>
-                    <th className="text-left py-2">Level</th>
-                    <th className="text-left py-2">Reporting Manager</th>
-                    <th className="text-right py-2">Days</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="text-left py-2">Previous</th>
-                    <th className="text-left py-2">New Level</th>
-                    <th className="text-right py-2">Effective</th>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(modal === "joiners" ? newJoiners : promotions).map((e) => (
-                <tr key={e.emp_id}>
-                  <td className="py-2 text-muted-foreground">{e.emp_id}</td>
-                  <td className="py-2 font-medium">{e.name}</td>
-                  {modal === "joiners" ? (
-                    <>
-                      <td className="py-2">{e.level ?? "—"}</td>
-                      <td className="py-2 text-muted-foreground">{nameFromEmail(e.manager_email)}</td>
-                      <td className="py-2 text-right">{tenureDays(e.joining_date)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="py-2">{e.previous_level ?? "—"}</td>
-                      <td className="py-2">{e.promoted_level ?? e.level ?? "—"}</td>
-                      <td className="py-2 text-right">{e.promotion_effective_date ?? "—"}</td>
-                    </>
-                  )}
-                </tr>
-              ))}
-              {(modal === "joiners" ? newJoiners : promotions).length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Nothing recorded yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </SheetContent>
-      </Sheet>
+      <SoWhatFooter employees={employees} page="Executive Overview" />
 
-      <EmployeeDetail employee={picked} onClose={() => setPicked(null)} onRegenerated={onRegenerated} />
+      <EmployeeDetail
+        employee={picked}
+        onClose={() => setPicked(null)}
+        onRegenerated={() => qc.invalidateQueries({ queryKey: ["employees"] })}
+      />
     </div>
   );
 }

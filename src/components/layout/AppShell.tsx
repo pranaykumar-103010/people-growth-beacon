@@ -1,21 +1,29 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LayoutDashboard, Grid3x3, AlertTriangle, LogOut, Sparkles, ShieldCheck, Calculator, Settings2, Crown, UserPlus, Trophy } from "lucide-react";
+import {
+  LayoutDashboard, Users, Target, ShieldAlert, Crown, Zap, Settings2,
+  LogOut, Sparkles, ShieldCheck, Calculator, Trophy, UserPlus,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { DataHealthBadge } from "@/components/DataHealthBadge";
 import { AiCopilotLauncher } from "@/components/AiCopilot";
+import { GlobalFilterBar } from "@/components/layout/GlobalFilterBar";
 
-const BASE_NAV = [
-  { to: "/", label: "Command Center", icon: LayoutDashboard },
-  { to: "/talent-matrix", label: "Talent Segments", icon: Grid3x3 },
-  { to: "/leadership-pipeline", label: "Leadership Pipeline", icon: Crown },
-  { to: "/high-performers", label: "High Performers", icon: Trophy },
-  { to: "/new-joiners", label: "New Joiners", icon: UserPlus },
-  { to: "/attrition", label: "Attrition Radar", icon: AlertTriangle },
-  { to: "/risk-methodology", label: "Risk Methodology", icon: Calculator },
-] as const;
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; adminOnly?: boolean; sub?: boolean };
 
+const NAV: NavItem[] = [
+  { to: "/", label: "Overview", icon: LayoutDashboard },
+  { to: "/workforce", label: "Workforce & Org", icon: Users },
+  { to: "/talent-matrix", label: "Talent & Performance", icon: Target },
+  { to: "/high-performers", label: "High Performers", icon: Trophy, sub: true },
+  { to: "/new-joiners", label: "New Joiners", icon: UserPlus, sub: true },
+  { to: "/attrition", label: "Retention & Flight Risk", icon: ShieldAlert },
+  { to: "/leadership-pipeline", label: "Succession & Critical Roles", icon: Crown },
+  { to: "/action-center", label: "HRBP Action Center", icon: Zap },
+  { to: "/risk-methodology", label: "Methodology", icon: Calculator },
+  { to: "/admin", label: "Admin & Ingestion", icon: Settings2, adminOnly: true },
+];
 
 const ROLE_LABEL: Record<string, string> = {
   hrbp_admin: "HRBP Admin",
@@ -33,31 +41,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.navigate({ to: "/login" });
   };
 
-  const nav = isAdmin
-    ? [...BASE_NAV, { to: "/admin" as const, label: "Admin", icon: Settings2 }]
-    : BASE_NAV;
+  const nav = NAV.filter((n) => !n.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground p-5 gap-1">
+      <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground p-5 gap-0.5">
         <div className="flex items-center gap-2 px-2 py-3 mb-4">
           <div className="size-9 rounded-lg bg-sidebar-primary grid place-items-center">
             <Sparkles className="size-5 text-sidebar-primary-foreground" />
           </div>
           <div>
             <div className="font-display font-semibold leading-tight">Talent IQ</div>
-            <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">Field Assist · Tech</div>
+            <div className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">HRBP & CXO Suite</div>
           </div>
         </div>
-        {nav.map(({ to, label, icon: Icon }) => (
+        {nav.map(({ to, label, icon: Icon, sub }) => (
           <Link
             key={to}
             to={to}
-            className="group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition"
+            className={cn(
+              "group flex items-center gap-3 rounded-md text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition",
+              sub ? "pl-9 pr-3 py-2 text-[13px] text-sidebar-foreground/65" : "px-3 py-2.5",
+            )}
             activeProps={{ className: "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary" }}
             activeOptions={{ exact: to === "/" }}
           >
-            <Icon className="size-4" />
+            {!sub && <Icon className="size-4" />}
+            {sub && <Icon className="size-3.5" />}
             {label}
           </Link>
         ))}
@@ -99,10 +109,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </div>
         </div>
+        <GlobalFilterBar />
         {children}
       </main>
       <AiCopilotLauncher />
     </div>
   );
 }
-
