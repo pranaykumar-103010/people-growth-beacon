@@ -21,6 +21,7 @@ import { Route as AppLeadershipPipelineRouteImport } from './routes/_app/leaders
 import { Route as AppHighPerformersRouteImport } from './routes/_app/high-performers'
 import { Route as AppAttritionRouteImport } from './routes/_app/attrition'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as AppActionCenterRouteImport } from './routes/_app/action-center'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -81,10 +82,16 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppActionCenterRoute = AppActionCenterRouteImport.update({
+  id: '/action-center',
+  path: '/action-center',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/action-center': typeof AppActionCenterRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
   '/high-performers': typeof AppHighPerformersRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/action-center': typeof AppActionCenterRoute
   '/admin': typeof AppAdminRoute
   '/attrition': typeof AppAttritionRoute
   '/high-performers': typeof AppHighPerformersRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/action-center': typeof AppActionCenterRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/attrition': typeof AppAttritionRoute
   '/_app/high-performers': typeof AppHighPerformersRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/action-center'
     | '/admin'
     | '/attrition'
     | '/high-performers'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/action-center'
     | '/admin'
     | '/attrition'
     | '/high-performers'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/action-center'
     | '/_app/admin'
     | '/_app/attrition'
     | '/_app/high-performers'
@@ -258,10 +270,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/action-center': {
+      id: '/_app/action-center'
+      path: '/action-center'
+      fullPath: '/action-center'
+      preLoaderRoute: typeof AppActionCenterRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppActionCenterRoute: typeof AppActionCenterRoute
   AppAdminRoute: typeof AppAdminRoute
   AppAttritionRoute: typeof AppAttritionRoute
   AppHighPerformersRoute: typeof AppHighPerformersRoute
@@ -274,6 +294,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppActionCenterRoute: AppActionCenterRoute,
   AppAdminRoute: AppAdminRoute,
   AppAttritionRoute: AppAttritionRoute,
   AppHighPerformersRoute: AppHighPerformersRoute,
