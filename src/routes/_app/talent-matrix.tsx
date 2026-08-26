@@ -108,7 +108,7 @@ function TalentMatrix() {
   };
 
   return (
-    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
+    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-7.5rem)] flex flex-col overflow-hidden">
       <header className="mb-3 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-widest text-accent font-medium">Performance × Potential</div>
