@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useScope } from "@/lib/scope";
 import { Card, CardContent } from "@/components/ui/card";
 import { LEADERSHIP_LABEL } from "@/lib/types";
 import type { Employee } from "@/lib/types";
@@ -25,7 +25,7 @@ function reason(e: Employee, k: string): string {
 }
 
 function LeadershipPipelinePage() {
-  const { data: employees = [] } = useEmployees();
+  const { employees } = useScope();
   const byBucket = useMemo(() => {
     const m: Record<string, Employee[]> = { ready_now: [], ready_1y: [], ready_2y: [], ic_track: [] };
     for (const e of employees) {

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useScope } from "@/lib/scope";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ const PRIORITY_CLASS: Record<string, string> = {
 };
 
 function TalentMatrix() {
-  const { data: employees = [] } = useEmployees();
+  const { employees } = useScope();
   const { role, isAdmin } = useAuth();
   const qc = useQueryClient();
   const move = useServerFn(moveEmployeeQuadrant);
@@ -108,7 +108,7 @@ function TalentMatrix() {
   };
 
   return (
-    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
+    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-7.5rem)] flex flex-col overflow-hidden">
       <header className="mb-3 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-widest text-accent font-medium">Performance × Potential</div>
