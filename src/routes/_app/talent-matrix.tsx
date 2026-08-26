@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useScope } from "@/lib/scope";
 import { useAuth } from "@/hooks/use-auth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ const PRIORITY_CLASS: Record<string, string> = {
 };
 
 function TalentMatrix() {
-  const { data: employees = [] } = useEmployees();
+  const { employees } = useScope();
   const { role, isAdmin } = useAuth();
   const qc = useQueryClient();
   const move = useServerFn(moveEmployeeQuadrant);

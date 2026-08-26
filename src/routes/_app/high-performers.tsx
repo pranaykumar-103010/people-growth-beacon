@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Download, Trophy } from "lucide-react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useScope } from "@/lib/scope";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ const THRESHOLD = 3.75;
 
 function HighPerformers() {
   const { role } = useAuth();
-  const { data: employees = [] } = useEmployees();
+  const { employees } = useScope();
 
   const list = useMemo(
     () => employees.filter((e) => Number(e.annual_rating) >= THRESHOLD).sort((a, b) => b.annual_rating - a.annual_rating),

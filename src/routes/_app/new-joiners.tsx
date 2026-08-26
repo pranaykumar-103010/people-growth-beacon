@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { UserPlus, Loader2, Sparkles } from "lucide-react";
-import { useEmployees } from "@/hooks/use-employees";
+import { useScope } from "@/lib/scope";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const WINDOW_DAYS = 90;
 
 function NewJoiners() {
   const { isAdmin } = useAuth();
-  const { data: employees = [] } = useEmployees();
+  const { employees } = useScope();
   const qc = useQueryClient();
   const upsert = useServerFn(upsertNewJoinerAssessment);
 
