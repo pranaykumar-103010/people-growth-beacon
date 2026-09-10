@@ -4,8 +4,6 @@ import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
   const SUPABASE_URL = 
     import.meta.env.VITE_SUPABASE_URL || 
     process.env.SUPABASE_URL || 
@@ -14,7 +12,7 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY = 
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 
     process.env.SUPABASE_PUBLISHABLE_KEY || 
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnamxka3hraHJyZGV6c3hqbGJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDEzMTYsImV4cCI6MjEwNDUxNzMxNn0.ipXJJ7JfLiBRfuKCRKLbDcBQF9RZRGef4snqnZUNOBg";
+    "PASTE_YOUR_FULL_EYJ_KEY_HERE";
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -37,8 +35,6 @@ function createSupabaseClient() {
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
     if (!_supabase) _supabase = createSupabaseClient();
