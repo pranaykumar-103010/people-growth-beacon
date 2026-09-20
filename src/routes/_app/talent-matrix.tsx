@@ -78,6 +78,13 @@ function TalentMatrix() {
       const q = (e.nine_box_quadrant as Quadrant) in m ? (e.nine_box_quadrant as Quadrant) : "Core Player";
       m[q].push(e);
     }
+    // Critical-role employees surface first in every box, then by flight-risk score.
+    for (const q of Object.keys(m) as Quadrant[]) {
+      m[q].sort((a, b) => {
+        if (a.is_critical_role !== b.is_critical_role) return a.is_critical_role ? -1 : 1;
+        return b.attrition_risk - a.attrition_risk;
+      });
+    }
     return m;
   }, [employees]);
 
@@ -168,7 +175,10 @@ function TalentMatrix() {
                       title={`${e.name} · ${e.sub_vertical ?? "—"} · Mgr: ${e.manager_email}${e.nine_box_override ? " · manual override" : ""}`}
                       className="w-full text-left px-2 py-1 rounded-md bg-white/90 hover:bg-white border border-black/10 hover:border-black/20 transition"
                     >
-                      <div className="text-[12.5px] font-semibold text-navy leading-tight truncate">{e.name}</div>
+                      <div className="text-[12.5px] font-semibold text-navy leading-tight truncate flex items-center gap-1">
+                        {e.is_critical_role && <span className="size-1.5 rounded-full bg-rag-red flex-shrink-0" title="Critical role" />}
+                        {e.name}
+                      </div>
                       <div className="text-[10.5px] text-muted-foreground leading-tight truncate">{e.sub_vertical ?? e.job_title}</div>
                     </button>
                   ))}
@@ -196,7 +206,10 @@ function TalentMatrix() {
                     {e.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-sm">{e.name}</div>
+                    <div className="font-medium truncate text-sm flex items-center gap-1.5">
+                      {e.name}
+                      {e.is_critical_role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-rag-red/10 text-rag-red font-normal">Critical</span>}
+                    </div>
                     <div className="text-xs text-muted-foreground truncate">{e.job_title} · {e.sub_vertical}</div>
                   </div>
                   <RagBadge score={e.attrition_risk} />
