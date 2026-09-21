@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Sparkles, RefreshCw } from "lucide-react";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 import type { Employee, Quadrant } from "@/lib/types";
 import { QUADRANT_DESC, tenureDays } from "@/lib/types";
 import { moveEmployeeQuadrant } from "@/lib/employees.functions";
@@ -115,7 +116,8 @@ function TalentMatrix() {
   };
 
   return (
-    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto h-[calc(100vh-7.5rem)] flex flex-col overflow-hidden">
+    <div className="px-5 md:px-8 pt-4 pb-4 max-w-[1600px] mx-auto space-y-4">
+    <div className="h-[calc(100vh-7.5rem)] flex flex-col overflow-hidden">
       <header className="mb-3 flex-shrink-0 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-widest text-accent font-medium">Performance × Potential</div>
@@ -190,6 +192,9 @@ function TalentMatrix() {
         </div>
       </div>
       <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold text-center pt-2 flex-shrink-0">Performance →</div>
+    </div>
+
+      <SoWhatFooter employees={employees} page="Talent & Performance" />
 
       {/* Quadrant roster */}
       <Sheet open={!!activeQuad} onOpenChange={(o) => !o && setActiveQuad(null)}>

@@ -1,7 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, Target, ShieldAlert, Crown, Zap, Settings2,
-  LogOut, Sparkles, ShieldCheck, Calculator, Trophy, UserPlus,
+  LogOut, Sparkles, ShieldCheck, Calculator, Trophy, UserPlus, UserCog,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { to: "/new-joiners", label: "New Joiners", icon: UserPlus, sub: true },
   { to: "/attrition", label: "Retention & Flight Risk", icon: ShieldAlert },
   { to: "/leadership-pipeline", label: "Succession & Critical Roles", icon: Crown },
+  { to: "/manager-effectiveness", label: "Manager Effectiveness", icon: UserCog },
   { to: "/action-center", label: "HRBP Action Center", icon: Zap },
   { to: "/risk-methodology", label: "Methodology", icon: Calculator },
   { to: "/admin", label: "Admin & Ingestion", icon: Settings2, adminOnly: true },

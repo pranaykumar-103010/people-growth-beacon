@@ -13,6 +13,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -73,6 +74,8 @@ function NewJoiners() {
           ))}
         </div>
       )}
+
+      <SoWhatFooter employees={employees} page="New Joiner Assessment" />
     </div>
   );
 }

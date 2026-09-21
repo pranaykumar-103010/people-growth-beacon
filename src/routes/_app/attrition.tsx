@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 import { generateScopedInsight } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -247,6 +248,8 @@ function AttritionRadar() {
           </Card>
         ))}
       </section>
+
+      <SoWhatFooter employees={scoped} page="Attrition Radar" />
     </div>
   );
 }
