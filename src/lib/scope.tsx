@@ -8,7 +8,7 @@ export type ScopeMode = "cxo" | "rollup" | "line" | "hrbp";
 export const SCOPE_LABEL: Record<ScopeMode, string> = {
   cxo: "CXO View",
   rollup: "Roll-up Manager View",
-  line: "Line Manager View",
+  line: "Reporting Manager View",
   hrbp: "HRBP View",
 };
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { UserPlus, Loader2, Sparkles } from "lucide-react";
-import { useScope } from "@/lib/scope";
+import { UserPlus, Loader2, Sparkles, Download, Calendar, Building2, ShieldAlert } from "lucide-react";
+import { useScope, nameFromEmail } from "@/lib/scope";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,19 @@ import { upsertNewJoinerAssessment } from "@/lib/employees.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { exportEmployeesXlsx } from "@/lib/export";
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
 
 export const Route = createFileRoute("/_app/new-joiners")({ component: NewJoiners });
 
 const WINDOW_DAYS = 90;
 
 function NewJoiners() {
-  const { isAdmin } = useAuth();
+  const { role, isAdmin } = useAuth();
   const { employees } = useScope();
   const qc = useQueryClient();
   const upsert = useServerFn(upsertNewJoinerAssessment);
@@ -30,16 +36,29 @@ function NewJoiners() {
     [employees],
   );
 
+  const avgRisk = useMemo(() => {
+    if (joiners.length === 0) return 0;
+    const scored = joiners.map((e) => e.new_joiner_risk_score ?? Math.round(0.5 * (5 - (e.new_joiner_exp_feedback ?? 3)) * 20 + 0.5 * (5 - (e.new_joiner_mgr_feedback ?? 3)) * 20));
+    return Math.round(scored.reduce((s, v) => s + v, 0) / scored.length);
+  }, [joiners]);
+
   return (
     <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
-      <header>
-        <div className="text-xs uppercase tracking-widest text-accent font-medium">Onboarding</div>
-        <h1 className="font-display text-3xl md:text-4xl flex items-center gap-2">
-          <UserPlus className="size-7 text-accent" /> New Joiner Assessment
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Employees within their first {WINDOW_DAYS} days. Risk = 0.5 × (5 − experience) × 20 + 0.5 × (5 − manager) × 20.
-        </p>
+      <header className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-accent font-medium">Onboarding</div>
+          <h1 className="font-display text-3xl md:text-4xl flex items-center gap-2">
+            <UserPlus className="size-7 text-accent" /> New Joiner Assessment
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {joiners.length} employee{joiners.length === 1 ? "" : "s"} within their first {WINDOW_DAYS} days · avg risk {avgRisk}/100.
+            {" "}Risk = 0.5 × (5 − experience) × 20 + 0.5 × (5 − manager) × 20.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5" disabled={joiners.length === 0}
+          onClick={() => exportEmployeesXlsx(joiners, `new-joiners-${role ?? "team"}`)}>
+          <Download className="size-4" /> Export
+        </Button>
       </header>
 
       {joiners.length === 0 ? (
@@ -76,12 +95,27 @@ function JoinerCard({ emp, isAdmin, save }: { emp: Employee; isAdmin: boolean; s
     <Card>
       <CardContent className="p-5 space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="font-display text-lg">{emp.name}</div>
-            <div className="text-xs text-muted-foreground">{emp.job_title} · {emp.sub_vertical} · {daysSince}d in</div>
+          <div className="min-w-0">
+            <div className="font-display text-lg flex items-center gap-2 flex-wrap">
+              {emp.name}
+              {emp.is_critical_role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-rag-red/10 text-rag-red font-normal">Critical role</span>}
+              {emp.talent_segment && <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-normal">{emp.talent_segment}</span>}
+            </div>
+            <div className="text-xs text-muted-foreground">{emp.job_title ?? "—"} · {emp.level ?? "—"} · {daysSince}d in</div>
           </div>
           <RagBadge score={emp.new_joiner_risk_score ?? risk} />
         </div>
+
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground border-y py-2.5">
+          <div className="flex items-center gap-1.5 truncate"><Building2 className="size-3.5 flex-shrink-0" /> {emp.department}{emp.sub_vertical ? ` · ${emp.sub_vertical}` : ""}</div>
+          <div className="flex items-center gap-1.5 truncate"><Calendar className="size-3.5 flex-shrink-0" /> Joined {formatDate(emp.joining_date)}</div>
+          <div className="truncate">Reporting Manager: <span className="text-foreground">{nameFromEmail(emp.manager_email)}</span></div>
+          <div className="truncate">Location: <span className="text-foreground">{emp.location ?? "—"}</span></div>
+          {emp.is_critical_role && (
+            <div className="flex items-center gap-1.5 truncate col-span-2 text-rag-red"><ShieldAlert className="size-3.5 flex-shrink-0" /> Flagged as a critical role — prioritise onboarding support.</div>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <Slider label="Experience" value={exp} onChange={setExp} disabled={!isAdmin} />
           <Slider label="Manager Feedback" value={mgr} onChange={setMgr} disabled={!isAdmin} />

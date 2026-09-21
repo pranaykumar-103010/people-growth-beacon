@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Download, HeartPulse, RefreshCw, Sparkles, TrendingUp, ShieldCheck, Users } from "lucide-react";
+import {
+  AlertTriangle, Download, HeartPulse, RefreshCw, Sparkles, TrendingUp, ShieldCheck, Users,
+  UserPlus, LogOut, Briefcase, Gauge, Percent, Trophy,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useScope, SCOPE_LABEL } from "@/lib/scope";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +12,7 @@ import { RagBadge } from "@/components/Rag";
 import { KpiCard } from "@/components/Kpi";
 import { EmployeeDetail } from "@/components/EmployeeDetail";
 import { SoWhatFooter } from "@/components/SoWhatFooter";
+import { OrgHeatmapGrid } from "@/components/OrgHeatmapGrid";
 import { exportEmployeesXlsx } from "@/lib/export";
 import { tenureDays } from "@/lib/types";
 import type { Employee } from "@/lib/types";
@@ -16,6 +20,13 @@ import { generateExecutiveInsights } from "@/lib/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useOpenPositions } from "@/hooks/use-open-positions";
+
+// Start of the current fiscal year — used for HC growth %, exits and new-joiner counters.
+const FY_START = new Date("2026-04-01T00:00:00Z");
+
+// Keep in sync with the threshold on the High Performers page (src/routes/_app/high-performers.tsx).
+const HIGH_PERFORMER_THRESHOLD = 3.75;
 
 export const Route = createFileRoute("/_app/")({
   component: Overview,
@@ -69,7 +80,9 @@ function healthIndex(list: Employee[]) {
 function Overview() {
   const { email, role, isAdmin } = useAuth();
   const { employees, scope, isLoading } = useScope();
+  const { data: openPositions } = useOpenPositions();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const runInsights = useServerFn(generateExecutiveInsights);
   const [picked, setPicked] = useState<Employee | null>(null);
   const [insights, setInsights] = useState<Insight[] | null>(null);
@@ -89,6 +102,27 @@ function Overview() {
     () => atRisk.filter((e) => e.potential_rating >= 3.5 && e.annual_rating >= 3.5),
     [atRisk],
   );
+
+  // ---- Executive Scorecard ----
+  const newJoiners = useMemo(() => onRoll.filter((e) => tenureDays(e.joining_date) <= 90), [onRoll]);
+  const exitsFy = useMemo(() => employees.filter((e) => e.exit_date && new Date(e.exit_date) >= FY_START), [employees]);
+  const hcAtFyStart = useMemo(
+    () => employees.filter((e) => new Date(e.joining_date) <= FY_START && (!e.exit_date || new Date(e.exit_date) > FY_START)).length,
+    [employees],
+  );
+  const hcGrowthPct = hcAtFyStart > 0 ? Math.round(((onRoll.length - hcAtFyStart) / hcAtFyStart) * 1000) / 10 : 0;
+  const avgPerformance = onRoll.length ? onRoll.reduce((s, e) => s + e.annual_rating, 0) / onRoll.length : 0;
+  const highPerformers = useMemo(
+    () => onRoll.filter((e) => Number(e.annual_rating) >= HIGH_PERFORMER_THRESHOLD),
+    [onRoll],
+  );
+  const hipoOrCritical = useMemo(
+    () => onRoll.filter((e) => e.is_critical_role || (e.potential_rating >= 3.5 && e.annual_rating >= 3.5)),
+    [onRoll],
+  );
+  const avgHc = (hcAtFyStart + onRoll.length) / 2 || 1;
+  const attritionPct = Math.round((exitsFy.length / avgHc) * 1000) / 10;
+  const openPositionsCount = useMemo(() => openPositions.filter((p) => p.status === "open").length, [openPositions]);
 
   const heatmap = useMemo(() => {
     const m = new Map<string, Employee[]>();
@@ -148,6 +182,23 @@ function Overview() {
           <Download className="size-4" /> Export Team Data
         </Button>
       </header>
+
+      <section>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-display text-lg">Executive Scorecard</h2>
+          <span className="text-[11px] text-muted-foreground">FY26 · {SCOPE_LABEL[scope]}</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiCard icon={Users} label="Current HC" value={onRoll.length} sub={`${hcGrowthPct >= 0 ? "+" : ""}${hcGrowthPct}% vs FY start`} tone={hcGrowthPct < 0 ? "warning" : "good"} onClick={() => navigate({ to: "/workforce" })} />
+          <KpiCard icon={UserPlus} label="New Joiners" value={newJoiners.length} sub="≤ 90 days tenure" tone="good" onClick={() => navigate({ to: "/new-joiners" })} />
+          <KpiCard icon={LogOut} label="Exits" value={exitsFy.length} sub="FY26 to date" tone={exitsFy.length > 0 ? "warning" : "good"} onClick={() => navigate({ to: "/workforce" })} />
+          <KpiCard icon={Briefcase} label="Open Positions" value={openPositionsCount} sub={`${openPositions.length} tracked total`} onClick={() => navigate({ to: "/workforce" })} />
+          <KpiCard icon={TrendingUp} label="HC Growth" value={`${hcGrowthPct >= 0 ? "+" : ""}${hcGrowthPct}%`} sub="Since FY start" tone={hcGrowthPct < 0 ? "warning" : "good"} onClick={() => navigate({ to: "/workforce" })} />
+          <KpiCard icon={Trophy} label="High Performers" value={highPerformers.length} sub={`Rating ≥ ${HIGH_PERFORMER_THRESHOLD} · avg ${avgPerformance.toFixed(2)}/5`} tone="good" onClick={() => navigate({ to: "/high-performers" })} />
+          <KpiCard icon={Gauge} label="HiPo + Critical" value={hipoOrCritical.length} sub="High potential or critical role" tone="good" onClick={() => navigate({ to: "/talent-matrix" })} />
+          <KpiCard icon={Percent} label="Attrition %" value={`${attritionPct}%`} sub="FY26 exits / avg HC" tone={attritionPct >= 15 ? "danger" : attritionPct >= 8 ? "warning" : "good"} onClick={() => navigate({ to: "/attrition" })} />
+        </div>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <Card className="ring-1 ring-border border-0 shadow-sm">
@@ -217,28 +268,7 @@ function Overview() {
       <section>
         <Card>
           <CardContent className="p-5">
-            <h2 className="font-display text-lg mb-1">Enterprise Risk Heatmap</h2>
-            <p className="text-xs text-muted-foreground mb-4">Sub-departments ranked by average flight-risk score.</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {heatmap.map((h) => {
-                const cls = h.risk >= 65 ? "bg-rag-red/15 border-rag-red/40"
-                  : h.risk >= 40 ? "bg-rag-amber/15 border-rag-amber/40"
-                  : "bg-rag-green/12 border-rag-green/35";
-                return (
-                  <div key={h.sub} className={`rounded-lg border p-3 ${cls}`}>
-                    <div className="text-sm font-semibold truncate">{h.sub}</div>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="font-display text-2xl">{h.risk}</span>
-                      <span className="text-[11px] text-muted-foreground">avg risk · {h.size} people</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Avg rating {h.rating.toFixed(2)} · {h.critical} critical {h.critical === 1 ? "role" : "roles"}
-                    </div>
-                  </div>
-                );
-              })}
-              {heatmap.length === 0 && <p className="text-sm text-muted-foreground">No population in scope.</p>}
-            </div>
+            <OrgHeatmapGrid employees={onRoll} />
           </CardContent>
         </Card>
       </section>
