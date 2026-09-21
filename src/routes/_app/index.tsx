@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle, Download, HeartPulse, RefreshCw, Sparkles, TrendingUp, ShieldCheck, Users,
-  UserPlus, LogOut, Briefcase, Star, Gauge, Percent,
+  UserPlus, LogOut, Briefcase, Gauge, Percent, Trophy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useScope, SCOPE_LABEL } from "@/lib/scope";
@@ -24,6 +24,9 @@ import { useOpenPositions } from "@/hooks/use-open-positions";
 
 // Start of the current fiscal year — used for HC growth %, exits and new-joiner counters.
 const FY_START = new Date("2026-04-01T00:00:00Z");
+
+// Keep in sync with the threshold on the High Performers page (src/routes/_app/high-performers.tsx).
+const HIGH_PERFORMER_THRESHOLD = 3.75;
 
 export const Route = createFileRoute("/_app/")({
   component: Overview,
@@ -109,6 +112,10 @@ function Overview() {
   );
   const hcGrowthPct = hcAtFyStart > 0 ? Math.round(((onRoll.length - hcAtFyStart) / hcAtFyStart) * 1000) / 10 : 0;
   const avgPerformance = onRoll.length ? onRoll.reduce((s, e) => s + e.annual_rating, 0) / onRoll.length : 0;
+  const highPerformers = useMemo(
+    () => onRoll.filter((e) => Number(e.annual_rating) >= HIGH_PERFORMER_THRESHOLD),
+    [onRoll],
+  );
   const hipoOrCritical = useMemo(
     () => onRoll.filter((e) => e.is_critical_role || (e.potential_rating >= 3.5 && e.annual_rating >= 3.5)),
     [onRoll],
@@ -187,7 +194,7 @@ function Overview() {
           <KpiCard icon={LogOut} label="Exits" value={exitsFy.length} sub="FY26 to date" tone={exitsFy.length > 0 ? "warning" : "good"} onClick={() => navigate({ to: "/workforce" })} />
           <KpiCard icon={Briefcase} label="Open Positions" value={openPositionsCount} sub={`${openPositions.length} tracked total`} onClick={() => navigate({ to: "/workforce" })} />
           <KpiCard icon={TrendingUp} label="HC Growth" value={`${hcGrowthPct >= 0 ? "+" : ""}${hcGrowthPct}%`} sub="Since FY start" tone={hcGrowthPct < 0 ? "warning" : "good"} onClick={() => navigate({ to: "/workforce" })} />
-          <KpiCard icon={Star} label="Avg Performance" value={avgPerformance.toFixed(2)} sub="Annual rating / 5" onClick={() => navigate({ to: "/high-performers" })} />
+          <KpiCard icon={Trophy} label="High Performers" value={highPerformers.length} sub={`Rating ≥ ${HIGH_PERFORMER_THRESHOLD} · avg ${avgPerformance.toFixed(2)}/5`} tone="good" onClick={() => navigate({ to: "/high-performers" })} />
           <KpiCard icon={Gauge} label="HiPo + Critical" value={hipoOrCritical.length} sub="High potential or critical role" tone="good" onClick={() => navigate({ to: "/talent-matrix" })} />
           <KpiCard icon={Percent} label="Attrition %" value={`${attritionPct}%`} sub="FY26 exits / avg HC" tone={attritionPct >= 15 ? "danger" : attritionPct >= 8 ? "warning" : "good"} onClick={() => navigate({ to: "/attrition" })} />
         </div>
