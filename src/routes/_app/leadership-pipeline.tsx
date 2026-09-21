@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useScope } from "@/lib/scope";
 import { Card, CardContent } from "@/components/ui/card";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 import { LEADERSHIP_LABEL } from "@/lib/types";
 import type { Employee } from "@/lib/types";
 import { Crown, Clock, Sparkles, User } from "lucide-react";
@@ -109,6 +110,8 @@ function LeadershipPipelinePage() {
           );
         })}
       </div>
+
+      <SoWhatFooter employees={employees} page="Succession & Critical Roles" />
     </div>
   );
 }

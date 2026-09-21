@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RagBadge } from "@/components/Rag";
 import { exportEmployeesXlsx } from "@/lib/export";
+import { SoWhatFooter } from "@/components/SoWhatFooter";
 
 export const Route = createFileRoute("/_app/high-performers")({ component: HighPerformers });
 
@@ -73,6 +74,8 @@ function HighPerformers() {
           </table>
         </CardContent>
       </Card>
+
+      <SoWhatFooter employees={employees} page="High Performers" />
     </div>
   );
 }
